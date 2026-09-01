@@ -4,6 +4,247 @@ import { useNavigate } from "react-router-dom";
 const API_URL = "http://localhost:8000";
 
 // ============================================================
+// CLEAN AI TRAVEL PLAN
+// ============================================================
+
+const cleanAIText = (text) => {
+  if (!text) {
+    return "";
+  }
+
+  return (
+    String(text)
+      // Remove markdown headings
+      .replace(/^#{1,6}\s*/gm, "")
+
+      // Remove bold / italic markers
+      .replace(/\*\*\*/g, "")
+      .replace(/\*\*/g, "")
+      .replace(/__/g, "")
+      .replace(/\*/g, "")
+
+      // Remove horizontal separators
+      .replace(/^---+$/gm, "")
+      .replace(/^___+$/gm, "")
+
+      // Convert markdown bullets
+      .replace(/^\s*[-•]\s+/gm, "• ")
+
+      // Remove code fences
+      .replace(/```/g, "")
+
+      // Remove excessive blank lines
+      .replace(/\n{3,}/g, "\n\n")
+
+      .trim()
+  );
+};
+
+// ============================================================
+// GET TRIP DATE
+// ============================================================
+
+const getTripDate = (startDate, dayNumber) => {
+  if (!startDate) {
+    return "";
+  }
+
+  const date = new Date(`${startDate}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  date.setDate(date.getDate() + Number(dayNumber) - 1);
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+// ============================================================
+// FORMAT DATE
+// ============================================================
+
+const formatDate = (dateString) => {
+  if (!dateString) {
+    return "Not specified";
+  }
+
+  const date = new Date(`${dateString}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateString;
+  }
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+// ============================================================
+// FORMAT SAVED TRAVEL PLAN
+// ============================================================
+
+function TravelPlanContent({ plan, startDate }) {
+  if (!plan) {
+    return (
+      <p className="text-sm leading-7 text-[#183B32]/50">
+        No travel plan was saved for this trip.
+      </p>
+    );
+  }
+
+  const text =
+    typeof plan === "string"
+      ? cleanAIText(plan)
+      : JSON.stringify(plan, null, 2);
+
+  const lines = text.split("\n");
+
+  return (
+    <div className="space-y-3">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trim();
+
+        if (!line) {
+          return <div key={index} className="h-2" />;
+        }
+
+        // ====================================================
+        // DAY HEADING
+        // ====================================================
+
+        const dayMatch = line.match(/^DAY\s*(\d+)\s*[-:–—]?\s*(.*)$/i);
+
+        if (dayMatch) {
+          const dayNumber = Number(dayMatch[1]);
+
+          const dayTitle = dayMatch[2]?.trim() || "";
+
+          const date = getTripDate(startDate, dayNumber);
+
+          return (
+            <div
+              key={index}
+              className="mt-7 rounded-2xl bg-[#123D35] p-5 text-white"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#E5C873]">
+                DAY {dayNumber}
+              </p>
+
+              {date && <p className="mt-2 font-serif text-2xl">{date}</p>}
+
+              {dayTitle && (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/65">
+                  {dayTitle}
+                </p>
+              )}
+            </div>
+          );
+        }
+
+        // ====================================================
+        // MAIN HEADINGS
+        // ====================================================
+
+        const mainHeadings = [
+          "TRIP OVERVIEW",
+          "DAY-BY-DAY ITINERARY",
+          "FOOD RECOMMENDATIONS",
+          "SHOPPING",
+          "TRAVEL TIPS",
+          "BUDGET SUMMARY",
+        ];
+
+        if (mainHeadings.includes(line.toUpperCase())) {
+          return (
+            <h3
+              key={index}
+              className="mt-7 border-b border-[#B4883D]/25 pb-2 font-serif text-2xl text-[#183B32]"
+            >
+              {line}
+            </h3>
+          );
+        }
+
+        // ====================================================
+        // TIME / SUB HEADINGS
+        // ====================================================
+
+        const subHeadings = [
+          "MORNING",
+          "AFTERNOON",
+          "EVENING",
+          "ESTIMATED DAILY BUDGET",
+        ];
+
+        if (subHeadings.includes(line.toUpperCase())) {
+          return (
+            <h4
+              key={index}
+              className="pt-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#B4883D]"
+            >
+              {line}
+            </h4>
+          );
+        }
+
+        // ====================================================
+        // BULLET
+        // ====================================================
+
+        if (line.startsWith("•")) {
+          return (
+            <div
+              key={index}
+              className="flex gap-3 text-sm leading-7 text-[#183B32]/70"
+            >
+              <span className="text-[#B4883D]">•</span>
+
+              <span>{line.substring(1).trim()}</span>
+            </div>
+          );
+        }
+
+        // ====================================================
+        // LABEL : VALUE
+        // ====================================================
+
+        if (line.includes(":") && line.length < 120) {
+          const parts = line.split(":");
+
+          const label = parts.shift()?.trim();
+
+          const value = parts.join(":").trim();
+
+          return (
+            <p key={index} className="text-sm leading-7 text-[#183B32]/70">
+              <span className="font-semibold text-[#183B32]">{label}:</span>{" "}
+              {value}
+            </p>
+          );
+        }
+
+        // ====================================================
+        // NORMAL TEXT
+        // ====================================================
+
+        return (
+          <p key={index} className="text-sm leading-7 text-[#183B32]/70">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================
 // MY TRIPS
 // ============================================================
 
@@ -38,6 +279,7 @@ function MyTrips() {
       setTrips(Array.isArray(data) ? data : data.trips || []);
     } catch (error) {
       console.error("My Trips Error:", error);
+
       setTrips([]);
     } finally {
       setLoading(false);
@@ -57,23 +299,22 @@ function MyTrips() {
 
     today.setHours(0, 0, 0, 0);
 
-    const startDate = new Date(trip.start_date);
-    const endDate = new Date(trip.end_date);
+    const startDate = new Date(`${trip.start_date}T00:00:00`);
+
+    const endDate = new Date(`${trip.end_date}T00:00:00`);
 
     startDate.setHours(0, 0, 0, 0);
+
     endDate.setHours(0, 0, 0, 0);
 
-    // Future trip
     if (today < startDate) {
       return "Upcoming";
     }
 
-    // Current trip
     if (today >= startDate && today <= endDate) {
       return "Ongoing";
     }
 
-    // Past trip
     return "Completed";
   };
 
@@ -174,16 +415,12 @@ function MyTrips() {
 
         {!loading && trips.length > 0 && (
           <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {/* ALL */}
-
             <StatusSummary
               label="All Trips"
               count={trips.length}
               active={filter === "All"}
               onClick={() => setFilter("All")}
             />
-
-            {/* UPCOMING */}
 
             <StatusSummary
               label="Upcoming"
@@ -192,16 +429,12 @@ function MyTrips() {
               onClick={() => setFilter("Upcoming")}
             />
 
-            {/* ONGOING */}
-
             <StatusSummary
               label="Ongoing"
               count={ongoingCount}
               active={filter === "Ongoing"}
               onClick={() => setFilter("Ongoing")}
             />
-
-            {/* COMPLETED */}
 
             <StatusSummary
               label="Completed"
@@ -365,7 +598,7 @@ function MyTrips() {
 }
 
 // ============================================================
-// STATUS SUMMARY COMPONENT
+// STATUS SUMMARY
 // ============================================================
 
 function StatusSummary({ label, count, active, onClick }) {
@@ -414,9 +647,7 @@ function TripCard({ trip, status, onView, onDelete }) {
 
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl">
-      {/* ==================================================
-          IMAGE / HEADER
-      ================================================== */}
+      {/* IMAGE */}
 
       <div className="relative h-56 overflow-hidden sm:h-60">
         <img
@@ -427,11 +658,7 @@ function TripCard({ trip, status, onView, onDelete }) {
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-        {/* STATUS */}
-
         <StatusBadge status={status} />
-
-        {/* DESTINATION */}
 
         <div className="absolute bottom-5 left-5 right-5">
           <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-[#E5C873]">
@@ -442,26 +669,20 @@ function TripCard({ trip, status, onView, onDelete }) {
         </div>
       </div>
 
-      {/* ==================================================
-          CARD CONTENT
-      ================================================== */}
+      {/* CONTENT */}
 
       <div className="p-6">
-        {/* DATES */}
-
         {trip.start_date && trip.end_date && (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4883D]">
               Travel Dates
             </p>
 
-            <p className="mt-2 text-sm font-medium text-[#183B32]">
-              {trip.start_date} → {trip.end_date}
+            <p className="mt-2 text-sm font-medium">
+              {formatDate(trip.start_date)} → {formatDate(trip.end_date)}
             </p>
           </div>
         )}
-
-        {/* TRAVELERS */}
 
         {trip.travelers && (
           <div className="mt-5">
@@ -469,13 +690,9 @@ function TripCard({ trip, status, onView, onDelete }) {
               Travelers
             </p>
 
-            <p className="mt-2 text-sm font-medium text-[#183B32]">
-              {trip.travelers}
-            </p>
+            <p className="mt-2 text-sm font-medium">{trip.travelers}</p>
           </div>
         )}
-
-        {/* BUDGET */}
 
         {trip.budget && (
           <div className="mt-5">
@@ -483,14 +700,12 @@ function TripCard({ trip, status, onView, onDelete }) {
               Budget
             </p>
 
-            <p className="mt-2 text-sm font-medium text-[#183B32]">
+            <p className="mt-2 text-sm font-medium">
               {trip.currency || "INR"}{" "}
               {Number(trip.budget).toLocaleString("en-IN")}
             </p>
           </div>
         )}
-
-        {/* TRAVEL STYLE */}
 
         {trip.travel_style && (
           <div className="mt-5">
@@ -498,13 +713,9 @@ function TripCard({ trip, status, onView, onDelete }) {
               Travel Style
             </p>
 
-            <p className="mt-2 text-sm font-medium text-[#183B32]">
-              {trip.travel_style}
-            </p>
+            <p className="mt-2 text-sm font-medium">{trip.travel_style}</p>
           </div>
         )}
-
-        {/* INTERESTS */}
 
         {interests.length > 0 && (
           <div className="mt-5">
@@ -525,9 +736,7 @@ function TripCard({ trip, status, onView, onDelete }) {
           </div>
         )}
 
-        {/* ==================================================
-            ACTIONS
-        ================================================== */}
+        {/* ACTIONS */}
 
         <div className="mt-7 flex gap-3">
           <button
@@ -592,9 +801,7 @@ function TripModal({ trip, status, onClose, onDelete }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3 sm:p-5">
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-[#F7F3E8]">
-        {/* ==================================================
-            MODAL HEADER
-        ================================================== */}
+        {/* HEADER */}
 
         <div className="sticky top-0 z-10 flex items-center justify-between bg-[#123D35] px-5 py-5 text-white sm:px-7">
           <div>
@@ -616,9 +823,7 @@ function TripModal({ trip, status, onClose, onDelete }) {
           </button>
         </div>
 
-        {/* ==================================================
-            DETAILS
-        ================================================== */}
+        {/* DETAILS */}
 
         <div className="p-5 sm:p-8">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -630,7 +835,9 @@ function TripModal({ trip, status, onClose, onDelete }) {
               label="Travel Dates"
               value={
                 trip.start_date && trip.end_date
-                  ? `${trip.start_date} → ${trip.end_date}`
+                  ? `${formatDate(trip.start_date)} → ${formatDate(
+                      trip.end_date,
+                    )}`
                   : "Not specified"
               }
             />
@@ -657,9 +864,7 @@ function TripModal({ trip, status, onClose, onDelete }) {
             />
           </div>
 
-          {/* ==================================================
-              INTERESTS
-          ================================================== */}
+          {/* INTERESTS */}
 
           {interests.length > 0 && (
             <div className="mt-8">
@@ -678,27 +883,22 @@ function TripModal({ trip, status, onClose, onDelete }) {
             </div>
           )}
 
-          {/* ==================================================
-              TRAVEL PLAN
-          ================================================== */}
+          {/* TRAVEL PLAN */}
 
           {trip.travel_plan && (
             <div className="mt-8">
               <h3 className="font-serif text-3xl">Travel Plan</h3>
 
-              <div className="mt-5 rounded-2xl bg-white p-6 shadow-sm">
-                <p className="whitespace-pre-line text-sm leading-8 text-[#183B32]/70">
-                  {typeof trip.travel_plan === "string"
-                    ? trip.travel_plan
-                    : JSON.stringify(trip.travel_plan, null, 2)}
-                </p>
+              <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm sm:p-7">
+                <TravelPlanContent
+                  plan={trip.travel_plan}
+                  startDate={trip.start_date}
+                />
               </div>
             </div>
           )}
 
-          {/* ==================================================
-              ACTIONS
-          ================================================== */}
+          {/* ACTIONS */}
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
@@ -724,7 +924,7 @@ function TripModal({ trip, status, onClose, onDelete }) {
 }
 
 // ============================================================
-// DETAIL COMPONENT
+// DETAIL
 // ============================================================
 
 function Detail({ label, value }) {

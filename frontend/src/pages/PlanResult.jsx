@@ -6,7 +6,6 @@ const API_URL = "http://127.0.0.1:8000";
 /*
   ============================================================
   DESTINATION DATA
-  Only Dubai and Paris are currently supported.
   ============================================================
 */
 
@@ -158,6 +157,301 @@ const destinationData = {
       },
     ],
   },
+
+  kerala: {
+    weather: {
+      temperature: "28°C",
+      condition: "Tropical",
+      humidity: "78%",
+      wind: "12 km/h",
+      icon: "🌴",
+      description:
+        "Warm tropical weather is expected. Carry light cotton clothes, comfortable footwear and rain protection.",
+    },
+
+    places: [
+      {
+        name: "Munnar",
+        type: "Hill Station",
+        icon: "⛰️",
+        description:
+          "Explore tea plantations, viewpoints and beautiful mountain landscapes.",
+      },
+      {
+        name: "Alleppey",
+        type: "Backwaters",
+        icon: "🚤",
+        description:
+          "Enjoy Kerala's famous backwaters and traditional houseboat experiences.",
+      },
+      {
+        name: "Thekkady",
+        type: "Wildlife & Nature",
+        icon: "🐘",
+        description:
+          "Explore wildlife, forests and nature experiences around Periyar.",
+      },
+      {
+        name: "Kochi",
+        type: "Culture & Heritage",
+        icon: "🏛️",
+        description:
+          "Discover historic streets, markets, coastal views and cultural attractions.",
+      },
+    ],
+
+    restaurants: [
+      {
+        name: "Kerala Spice Kitchen",
+        type: "Kerala Cuisine",
+        rating: "4.5",
+        icon: "🍛",
+        location: "Kochi",
+      },
+      {
+        name: "Backwater Restaurant",
+        type: "Traditional Cuisine",
+        rating: "4.4",
+        icon: "🍚",
+        location: "Alleppey",
+      },
+      {
+        name: "Munnar Café",
+        type: "Local Cuisine",
+        rating: "4.3",
+        icon: "☕",
+        location: "Munnar",
+      },
+      {
+        name: "Coconut Grove",
+        type: "South Indian",
+        rating: "4.5",
+        icon: "🥥",
+        location: "Kochi",
+      },
+    ],
+  },
+
+  rajasthan: {
+    weather: {
+      temperature: "24°C",
+      condition: "Pleasant",
+      humidity: "42%",
+      wind: "10 km/h",
+      icon: "🏜️",
+      description:
+        "Pleasant winter conditions are expected. Carry comfortable clothes and a light jacket for evenings.",
+    },
+
+    places: [
+      {
+        name: "Jaipur",
+        type: "Heritage City",
+        icon: "🏰",
+        description:
+          "Explore magnificent palaces, forts and colorful local markets.",
+      },
+      {
+        name: "Jaisalmer",
+        type: "Desert Destination",
+        icon: "🐪",
+        description:
+          "Experience the golden city, desert landscapes and camel safari.",
+      },
+      {
+        name: "Udaipur",
+        type: "Lakes & Palaces",
+        icon: "🏞️",
+        description:
+          "Enjoy beautiful lakes, royal palaces and peaceful city views.",
+      },
+      {
+        name: "Jodhpur",
+        type: "Historic City",
+        icon: "🏯",
+        description:
+          "Visit the famous Mehrangarh Fort and explore the blue city.",
+      },
+    ],
+
+    restaurants: [
+      {
+        name: "Rajasthani Rasoi",
+        type: "Rajasthani Cuisine",
+        rating: "4.5",
+        icon: "🍛",
+        location: "Jaipur",
+      },
+      {
+        name: "Royal Thali House",
+        type: "Traditional Thali",
+        rating: "4.6",
+        icon: "🥘",
+        location: "Jodhpur",
+      },
+      {
+        name: "Desert Café",
+        type: "Local Cuisine",
+        rating: "4.3",
+        icon: "☕",
+        location: "Jaisalmer",
+      },
+      {
+        name: "Lake View Restaurant",
+        type: "Indian Cuisine",
+        rating: "4.5",
+        icon: "🍽️",
+        location: "Udaipur",
+      },
+    ],
+  },
+
+  bali: {
+    weather: {
+      temperature: "29°C",
+      condition: "Tropical",
+      humidity: "80%",
+      wind: "15 km/h",
+      icon: "🌴",
+      description:
+        "Warm tropical weather is expected. Carry light clothes, sunscreen and rain protection.",
+    },
+
+    places: [
+      {
+        name: "Ubud",
+        type: "Culture & Nature",
+        icon: "🌿",
+        description:
+          "Explore rice terraces, temples, art markets and cultural experiences.",
+      },
+      {
+        name: "Seminyak",
+        type: "Beach Destination",
+        icon: "🏖️",
+        description:
+          "Enjoy beaches, cafés, shopping and beautiful sunset experiences.",
+      },
+      {
+        name: "Tanah Lot",
+        type: "Temple",
+        icon: "⛩️",
+        description:
+          "Visit the famous sea temple and enjoy its spectacular coastal setting.",
+      },
+      {
+        name: "Nusa Dua",
+        type: "Beach & Resort",
+        icon: "🌊",
+        description:
+          "Relax at beautiful beaches and enjoy water-based activities.",
+      },
+    ],
+
+    restaurants: [
+      {
+        name: "Bali Spice",
+        type: "Balinese Cuisine",
+        rating: "4.5",
+        icon: "🍛",
+        location: "Ubud",
+      },
+      {
+        name: "Sunset Beach Café",
+        type: "International",
+        rating: "4.4",
+        icon: "🍹",
+        location: "Seminyak",
+      },
+      {
+        name: "Ubud Garden",
+        type: "Local Cuisine",
+        rating: "4.5",
+        icon: "🥗",
+        location: "Ubud",
+      },
+      {
+        name: "Ocean View Restaurant",
+        type: "Fine Dining",
+        rating: "4.6",
+        icon: "🍽️",
+        location: "Nusa Dua",
+      },
+    ],
+  },
+
+  maldives: {
+    weather: {
+      temperature: "30°C",
+      condition: "Sunny",
+      humidity: "76%",
+      wind: "17 km/h",
+      icon: "🏝️",
+      description:
+        "Warm island weather is expected. Carry swimwear, sunscreen, light clothing and sunglasses.",
+    },
+
+    places: [
+      {
+        name: "Malé",
+        type: "Capital City",
+        icon: "🏙️",
+        description:
+          "Explore the capital city, local markets and cultural attractions.",
+      },
+      {
+        name: "Maafushi",
+        type: "Island",
+        icon: "🏝️",
+        description:
+          "Enjoy beaches, water sports and local island experiences.",
+      },
+      {
+        name: "Hulhumalé",
+        type: "Beach Destination",
+        icon: "🌊",
+        description: "Relax on beautiful beaches and enjoy coastal activities.",
+      },
+      {
+        name: "Baa Atoll",
+        type: "Marine Destination",
+        icon: "🐠",
+        description:
+          "Explore coral reefs and marine life through snorkeling and diving.",
+      },
+    ],
+
+    restaurants: [
+      {
+        name: "Island Taste",
+        type: "Maldivian Cuisine",
+        rating: "4.5",
+        icon: "🍛",
+        location: "Malé",
+      },
+      {
+        name: "Ocean Breeze",
+        type: "Seafood",
+        rating: "4.6",
+        icon: "🦐",
+        location: "Maafushi",
+      },
+      {
+        name: "Lagoon Café",
+        type: "International",
+        rating: "4.4",
+        icon: "☕",
+        location: "Hulhumalé",
+      },
+      {
+        name: "Coral View",
+        type: "Fine Dining",
+        rating: "4.6",
+        icon: "🍽️",
+        location: "Baa Atoll",
+      },
+    ],
+  },
 };
 
 /*
@@ -203,9 +497,37 @@ function PlanResult() {
   // DESTINATION KEY
   // ============================================================
 
-  const destinationKey = destination.toLowerCase().includes("paris")
-    ? "paris"
-    : "dubai";
+  const getDestinationKey = () => {
+    const value = destination.toLowerCase().trim();
+
+    if (value.includes("paris")) {
+      return "paris";
+    }
+
+    if (value.includes("dubai")) {
+      return "dubai";
+    }
+
+    if (value.includes("kerala")) {
+      return "kerala";
+    }
+
+    if (value.includes("rajasthan")) {
+      return "rajasthan";
+    }
+
+    if (value.includes("bali")) {
+      return "bali";
+    }
+
+    if (value.includes("maldives")) {
+      return "maldives";
+    }
+
+    return "paris";
+  };
+
+  const destinationKey = getDestinationKey();
 
   const destinationInfo = destinationData[destinationKey];
 
@@ -296,6 +618,7 @@ function PlanResult() {
   const handleSaveTrip = async () => {
     if (!tripRequest.destination) {
       setSaveError("Trip information is missing.");
+
       return;
     }
 
@@ -329,7 +652,7 @@ function PlanResult() {
 
           travel_plan:
             typeof travelPlan === "string"
-              ? travelPlan
+              ? cleanAIText(travelPlan)
               : JSON.stringify(travelPlan),
         }),
       });
@@ -348,6 +671,45 @@ function PlanResult() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // ============================================================
+  // CLEAN AI TEXT
+  // ============================================================
+
+  const cleanAIText = (text) => {
+    if (!text) {
+      return "";
+    }
+
+    return (
+      String(text)
+        // Remove Markdown headings
+        .replace(/^#{1,6}\s*/gm, "")
+
+        // Remove bold / italic
+        .replace(/\*\*\*/g, "")
+
+        .replace(/\*\*/g, "")
+
+        .replace(/\*/g, "")
+
+        // Remove separators
+        .replace(/^---+$/gm, "")
+
+        .replace(/^___+$/gm, "")
+
+        // Convert bullets
+        .replace(/^\s*[-•]\s+/gm, "• ")
+
+        // Remove code fences
+        .replace(/```/g, "")
+
+        // Remove excessive spaces
+        .replace(/\n{3,}/g, "\n\n")
+
+        .trim()
+    );
   };
 
   // ============================================================
@@ -371,20 +733,33 @@ function PlanResult() {
       )
       .join("\n\n");
 
+    const cleanedPlan = cleanAIText(
+      typeof travelPlan === "string"
+        ? travelPlan
+        : JSON.stringify(travelPlan, null, 2),
+    );
+
     const pdfWindow = window.open("", "_blank");
 
     if (!pdfWindow) {
       alert("Please allow pop-ups to generate the travel PDF.");
+
       return;
     }
 
     pdfWindow.document.write(`
       <!DOCTYPE html>
+
       <html>
+
       <head>
-        <title>${destination} Travel Planning Guide</title>
+
+        <title>
+          ${destination} Travel Planning Guide
+        </title>
 
         <style>
+
           body {
             font-family: Arial, sans-serif;
             padding: 40px;
@@ -402,6 +777,11 @@ function PlanResult() {
             margin-top: 30px;
           }
 
+          h3 {
+            color: #B4883D;
+            margin-top: 25px;
+          }
+
           .gold {
             color: #B4883D;
             font-weight: bold;
@@ -412,6 +792,12 @@ function PlanResult() {
             padding: 18px;
             margin-top: 15px;
             border-radius: 8px;
+            white-space: pre-line;
+          }
+
+          .day {
+            page-break-inside: avoid;
+            margin-top: 25px;
           }
 
           .footer {
@@ -422,7 +808,17 @@ function PlanResult() {
             color: #777;
           }
 
+          .print-button {
+            padding: 12px 20px;
+            background: #123D35;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+          }
+
           @media print {
+
             body {
               padding: 20px;
             }
@@ -430,72 +826,140 @@ function PlanResult() {
             .print-button {
               display: none;
             }
+
           }
+
         </style>
+
       </head>
 
       <body>
 
-        <h1>WAY TO PARADISE</h1>
+        <h1>
+          WAY TO PARADISE
+        </h1>
 
         <p class="gold">
           ${destination} Travel Planning Guide
         </p>
 
         <div class="box">
-          <strong>Destination:</strong> ${destination}<br/>
-          <strong>Travel Dates:</strong> ${formatDate(startDate)} → ${formatDate(
-            endDate,
-          )}<br/>
-          <strong>Travelers:</strong> ${travelers}<br/>
-          <strong>Budget:</strong> ${currency} ${formattedBudget}<br/>
-          <strong>Travel Style:</strong> ${travelStyle}
+
+          <strong>Destination:</strong>
+          ${destination}
+
+          <br/>
+
+          <strong>Travel Dates:</strong>
+          ${formatDate(startDate)}
+          →
+          ${formatDate(endDate)}
+
+          <br/>
+
+          <strong>Travelers:</strong>
+          ${travelers}
+
+          <br/>
+
+          <strong>Budget:</strong>
+          ${currency}
+          ${formattedBudget}
+
+          <br/>
+
+          <strong>Travel Style:</strong>
+          ${travelStyle}
+
         </div>
 
-        <h2>Weather</h2>
+
+        <h2>
+          Weather
+        </h2>
 
         <div class="box">
+
           ${info.weather.icon}
-          ${info.weather.temperature} —
-          ${info.weather.condition}<br/>
-          Humidity: ${info.weather.humidity}<br/>
-          Wind: ${info.weather.wind}<br/><br/>
+
+          ${info.weather.temperature}
+          —
+          ${info.weather.condition}
+
+          <br/>
+
+          Humidity:
+          ${info.weather.humidity}
+
+          <br/>
+
+          Wind:
+          ${info.weather.wind}
+
+          <br/><br/>
+
           ${info.weather.description}
+
         </div>
 
-        <h2>Places to Explore</h2>
+
+        <h2>
+          Places to Explore
+        </h2>
 
         <div class="box">
+
           ${placesText.replace(/\n/g, "<br/>")}
+
         </div>
 
-        <h2>Recommended Restaurants</h2>
+
+        <h2>
+          Recommended Restaurants
+        </h2>
 
         <div class="box">
+
           ${restaurantsText.replace(/\n/g, "<br/>")}
+
         </div>
 
-        <h2>Travel Plan</h2>
+
+        <h2>
+          Complete AI Travel Plan
+        </h2>
 
         <div class="box">
-          ${
-            typeof travelPlan === "string"
-              ? travelPlan.replace(/\n/g, "<br/>")
-              : JSON.stringify(travelPlan, null, 2)
-          }
+
+          ${cleanedPlan.replace(/\n/g, "<br/>")}
+
         </div>
 
-        <h2>Travel Sources</h2>
+
+        <h2>
+          Travel Sources
+        </h2>
 
         <div class="box">
-          Google Maps<br/>
-          TripAdvisor<br/>
+
+          Google Maps
+          <br/>
+
+          TripAdvisor
+          <br/>
+
           Official Tourism Information
+
         </div>
+
 
         <div class="footer">
-          WAY TO PARADISE<br/>
+
+          WAY TO PARADISE
+          <br/>
+
           TRAVELS • EXPLORE • REMEMBER
+
         </div>
 
         <br/>
@@ -503,19 +967,12 @@ function PlanResult() {
         <button
           class="print-button"
           onclick="window.print()"
-          style="
-            padding: 12px 20px;
-            background: #123D35;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-          "
         >
           Save / Print PDF
         </button>
 
       </body>
+
       </html>
     `);
 
@@ -523,7 +980,7 @@ function PlanResult() {
   };
 
   // ============================================================
-  // RENDER AI PLAN
+  // RENDER AI TRAVEL PLAN
   // ============================================================
 
   const renderTravelPlan = () => {
@@ -535,7 +992,7 @@ function PlanResult() {
       );
     }
 
-    if (typeof travelPlan === "object") {
+    if (typeof travelPlan !== "string") {
       return (
         <pre className="whitespace-pre-wrap text-sm leading-8 text-[#183B32]/70">
           {JSON.stringify(travelPlan, null, 2)}
@@ -543,45 +1000,49 @@ function PlanResult() {
       );
     }
 
-    const planText = String(travelPlan);
+    const cleanedPlan = cleanAIText(travelPlan);
 
-    const lines = planText.split("\n");
+    const lines = cleanedPlan.split("\n");
 
     return (
       <div className="space-y-4">
-        {lines.map((line, index) => {
-          const trimmedLine = line.trim();
+        {lines.map((rawLine, index) => {
+          const line = rawLine.trim();
 
-          if (!trimmedLine) {
+          if (!line) {
             return <div key={index} className="h-2" />;
           }
 
-          const dayMatch = trimmedLine.match(/^DAY\s*(\d+)\s*[-:–—]?\s*(.*)$/i);
+          // ==================================================
+          // DAY HEADING
+          // ==================================================
+
+          const dayMatch = line.match(/^DAY\s*(\d+)\s*[-:–—]?\s*(.*)$/i);
 
           if (dayMatch) {
             const dayNumber = Number(dayMatch[1]);
 
-            const dayTitle = dayMatch[2] ? dayMatch[2].trim() : "";
+            const dayTitle = dayMatch[2]?.trim() || "";
 
             const tripDate = getTripDate(dayNumber);
 
             return (
               <div
                 key={index}
-                className="mt-7 border-b border-[#183B32]/10 pb-5 first:mt-0"
+                className="mt-8 rounded-2xl bg-[#123D35] p-6 text-white shadow-md sm:p-7"
               >
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#B4883D]">
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#E5C873]">
                   DAY {dayNumber}
                 </p>
 
                 {tripDate && (
-                  <h3 className="mt-2 font-serif text-2xl text-[#183B32] sm:text-3xl">
+                  <h3 className="mt-3 font-serif text-2xl sm:text-3xl">
                     {tripDate}
                   </h3>
                 )}
 
                 {dayTitle && (
-                  <p className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-[#183B32]/65">
+                  <p className="mt-3 text-sm font-semibold uppercase tracking-[0.12em] text-white/70">
                     {dayTitle}
                   </p>
                 )}
@@ -589,9 +1050,104 @@ function PlanResult() {
             );
           }
 
+          // ==================================================
+          // MAIN SECTION HEADINGS
+          // ==================================================
+
+          const mainHeadings = [
+            "TRIP OVERVIEW",
+
+            "FOOD RECOMMENDATIONS",
+
+            "SHOPPING",
+
+            "TRAVEL TIPS",
+
+            "BUDGET SUMMARY",
+
+            "DAY-BY-DAY ITINERARY",
+          ];
+
+          if (mainHeadings.includes(line.toUpperCase())) {
+            return (
+              <div
+                key={index}
+                className="mt-8 border-b border-[#B4883D]/30 pb-3"
+              >
+                <h3 className="font-serif text-2xl text-[#183B32] sm:text-3xl">
+                  {line}
+                </h3>
+              </div>
+            );
+          }
+
+          // ==================================================
+          // TIME HEADINGS
+          // ==================================================
+
+          const timeHeadings = [
+            "MORNING",
+
+            "AFTERNOON",
+
+            "EVENING",
+
+            "ESTIMATED DAILY BUDGET",
+          ];
+
+          if (timeHeadings.includes(line.toUpperCase())) {
+            return (
+              <div key={index} className="pt-4">
+                <h4 className="text-xs font-bold uppercase tracking-[0.25em] text-[#B4883D]">
+                  {line}
+                </h4>
+              </div>
+            );
+          }
+
+          // ==================================================
+          // BULLET ITEMS
+          // ==================================================
+
+          if (line.startsWith("•")) {
+            return (
+              <div
+                key={index}
+                className="flex gap-3 text-sm leading-7 text-[#183B32]/70"
+              >
+                <span className="mt-1 text-[#B4883D]">•</span>
+
+                <span>{line.substring(1).trim()}</span>
+              </div>
+            );
+          }
+
+          // ==================================================
+          // LABEL : VALUE
+          // ==================================================
+
+          if (line.includes(":") && line.length < 100) {
+            const parts = line.split(":");
+
+            const label = parts.shift()?.trim();
+
+            const value = parts.join(":").trim();
+
+            return (
+              <p key={index} className="text-sm leading-7 text-[#183B32]/70">
+                <span className="font-semibold text-[#183B32]">{label}:</span>{" "}
+                {value}
+              </p>
+            );
+          }
+
+          // ==================================================
+          // NORMAL TEXT
+          // ==================================================
+
           return (
             <p key={index} className="text-sm leading-8 text-[#183B32]/70">
-              {trimmedLine}
+              {line}
             </p>
           );
         })}
@@ -689,7 +1245,7 @@ function PlanResult() {
           </h2>
 
           <p className="mt-3 text-sm leading-7 text-[#183B32]/50">
-            A personalized journey created for your trip.
+            A detailed day-by-day journey created for your trip.
           </p>
 
           <div className="mt-8 rounded-2xl bg-[#FCFBF7] p-6 sm:p-8">
@@ -798,7 +1354,7 @@ function PlanResult() {
       </section>
 
       {/* ======================================================
-          PLACES / ATTRACTIONS
+          PLACES
       ====================================================== */}
 
       <section className="mx-auto max-w-6xl px-5 pb-14 sm:px-8">
@@ -908,7 +1464,8 @@ function PlanResult() {
           </h2>
 
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[#183B32]/50">
-            Use these resources to explore more information about {destination}.
+            Use these resources to explore more information about
+            {destination}.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -962,7 +1519,7 @@ function PlanResult() {
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/60">
                 Generate a destination-specific travel planning document
                 containing your trip details, weather, places, restaurants,
-                sources and AI travel plan.
+                sources and complete AI travel plan.
               </p>
             </div>
 
