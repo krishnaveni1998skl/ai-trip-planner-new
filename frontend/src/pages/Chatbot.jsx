@@ -123,10 +123,10 @@ function Chatbot() {
   // ==========================================================
 
   const quickQuestions = [
-    "Plan a 5 day Dubai trip",
-    "Best places to visit in Dubai?",
-    "Suggest hotels in Dubai",
-    "What food should I try?",
+    `Plan a 5 day ${destination || "travel"} trip`,
+    `Best places to visit in ${destination || "this destination"}?`,
+    `Suggest hotels in ${destination || "this destination"}`,
+    `What food should I try?`,
     "What are the best attractions?",
     "Give me a budget travel plan",
   ];
