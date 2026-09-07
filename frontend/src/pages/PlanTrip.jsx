@@ -1174,7 +1174,8 @@ function PlanTrip() {
       }
 
       const flightResults = data.flights || [];
-
+console.log("Frontend flights count:", flightResults.length);
+console.log("Frontend flights:", flightResults);
       setFlights(flightResults);
 
       // ==========================================
@@ -1959,7 +1960,7 @@ function PlanTrip() {
                 </p>
 
                 <p className="text-xs text-gray-500">
-                  Google Flights via SerpApi
+                  FlightAPI
                 </p>
               </div>
 
@@ -3013,7 +3014,7 @@ function FlightCard({ flight }) {
         <p className="text-xs text-gray-500">Source</p>
 
         <p className="text-sm font-semibold text-[#24382c]">
-          Google Flights via SerpApi
+          FlightAPI
         </p>
       </div>
     </div>

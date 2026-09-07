@@ -1,15 +1,21 @@
+# ============================================================
+# FLIGHT SERVICE - FLIGHTAPI.IO
+# ============================================================
+
 import os
-import httpx
+from typing import Optional
+
 from dotenv import load_dotenv
 
 from app.utils.api_helpers import safe_get
 
+
 load_dotenv()
 
 
-# =========================================================
+# ============================================================
 # CITY → IATA CODE
-# =========================================================
+# ============================================================
 
 CITY_IATA = {
     "chennai": "MAA",
@@ -20,6 +26,7 @@ CITY_IATA = {
     "bangkok": "BKK",
     "bali": "DPS",
     "maldives": "MLE",
+    "male": "MLE",
     "japan": "TYO",
     "delhi": "DEL",
     "mumbai": "BOM",
@@ -32,15 +39,22 @@ CITY_IATA = {
 
 
 def normalize_city(city: str) -> str:
+    """
+    Convert city name to IATA code.
+
+    If the value is already an IATA code,
+    it will simply be converted to uppercase.
+    """
+
     return CITY_IATA.get(
         city.strip().lower(),
         city.strip().upper(),
     )
 
 
-# =========================================================
-# SERPAPI GOOGLE FLIGHTS
-# =========================================================
+# ============================================================
+# FLIGHTAPI.IO
+# ============================================================
 
 async def search_flights(
     origin: str,
@@ -48,99 +62,133 @@ async def search_flights(
     departure_date: str,
     adults: int = 1,
 ):
+    """
+    Search flights using FlightAPI.io.
 
-    # =====================================================
-    # CHECK API KEY
-    # =====================================================
+    Returns normalized flight data compatible with
+    the existing Trip Planner frontend and budget system.
+    """
 
-    api_key = os.getenv("SERPAPI_API_KEY")
+    # ========================================================
+    # VALIDATION
+    # ========================================================
+
+    if not origin or not origin.strip():
+
+        return {
+            "success": False,
+            "flights": [],
+            "error_type": "validation_error",
+            "message": "Origin is required.",
+            "is_live": False,
+        }
+
+    if not destination or not destination.strip():
+
+        return {
+            "success": False,
+            "flights": [],
+            "error_type": "validation_error",
+            "message": "Destination is required.",
+            "is_live": False,
+        }
+
+    if not departure_date:
+
+        return {
+            "success": False,
+            "flights": [],
+            "error_type": "validation_error",
+            "message": "Departure date is required.",
+            "is_live": False,
+        }
+
+    if adults < 1:
+
+        return {
+            "success": False,
+            "flights": [],
+            "error_type": "validation_error",
+            "message": "Travelers must be at least 1.",
+            "is_live": False,
+        }
+
+    # ========================================================
+    # API KEY
+    # ========================================================
+
+    api_key = os.getenv("FLIGHTAPI_KEY")
 
     if not api_key:
+
         return {
             "success": False,
             "flights": [],
             "error_type": "configuration_error",
-            "message": "Flight API is not configured.",
+            "message": "FlightAPI is not configured.",
             "is_live": False,
         }
 
+    # ========================================================
+    # NORMALIZE ROUTE
+    # ========================================================
+
     origin_code = normalize_city(origin)
+
     destination_code = normalize_city(destination)
 
     print(
-        f"SerpApi Flight Search: "
-        f"{origin} ({origin_code}) "
-        f"-> "
+        f"FlightAPI Search: "
+        f"{origin} ({origin_code}) -> "
         f"{destination} ({destination_code}) "
         f"on {departure_date}"
     )
 
-    # =====================================================
-    # GOOGLE FLIGHTS API
-    # =====================================================
+    # ========================================================
+    # FLIGHTAPI URL
+    # ========================================================
 
-    url = "https://serpapi.com/search"
+    url = (
+        "https://api.flightapi.io/onewaytrip/"
+        f"{api_key}/"
+        f"{origin_code}/"
+        f"{destination_code}/"
+        f"{departure_date}/"
+        f"{adults}/"
+        "0/"
+        "0/"
+        "Economy/"
+        "INR"
+    )
 
-    params = {
-        "engine": "google_flights",
-        "api_key": api_key,
-
-        # Route
-        "departure_id": origin_code,
-        "arrival_id": destination_code,
-
-        # Exact travel date
-        "outbound_date": departure_date,
-
-        # One-way
-        "type": "2",
-
-        # Passenger count
-        "adults": adults,
-
-        # Economy
-        "travel_class": "1",
-
-        # India + English
-        "gl": "in",
-        "hl": "en",
-
-        # Currency
-        "currency": "INR",
-
-        # More complete Google Flights results
-        "deep_search": "true",
-    }
-
-    # =====================================================
-    # SAFE API REQUEST
-    # =====================================================
+    # ========================================================
+    # API REQUEST
+    # ========================================================
 
     result = await safe_get(
         url=url,
-        params=params,
         timeout=60,
         retries=1,
     )
 
-    # =====================================================
-    # HANDLE API ERROR
-    # =====================================================
+    # ========================================================
+    # HANDLE HTTP/API ERROR
+    # ========================================================
 
     if not result.get("success"):
 
         error_type = result.get(
             "error_type",
-            "unknown",
+            "flight_api_error",
         )
 
         message = result.get(
             "message",
-            "Flight service unavailable",
+            "Flight service is currently unavailable.",
         )
 
         print(
-            f"Flight API error: "
+            f"FlightAPI error: "
             f"{error_type} - {message}"
         )
 
@@ -152,121 +200,397 @@ async def search_flights(
             "is_live": False,
         }
 
-    # =====================================================
+    # ========================================================
     # READ RESPONSE
-    # =====================================================
+    # ========================================================
 
     data = result.get("data", {})
 
-    # =====================================================
-    # CHECK SERPAPI ERROR
-    # =====================================================
+    if not isinstance(data, dict):
+
+        return {
+            "success": False,
+            "flights": [],
+            "error_type": "invalid_response",
+            "message": "FlightAPI returned an invalid response.",
+            "is_live": False,
+        }
+
+    # ========================================================
+    # CHECK PROVIDER ERROR
+    # ========================================================
 
     if data.get("error"):
 
         message = data.get(
             "error",
-            "SerpApi flight search failed",
-        )
-
-        print(
-            f"SerpApi error: {message}"
+            "FlightAPI returned an error.",
         )
 
         return {
             "success": False,
             "flights": [],
-            "error_type": "serpapi_error",
+            "error_type": "provider_error",
             "message": message,
             "is_live": False,
         }
 
-    # =====================================================
-    # READ FLIGHT RESULTS
-    # =====================================================
+    # ========================================================
+    # READ FLIGHT COLLECTIONS
+    # ========================================================
 
-    raw_flights = []
-
-    raw_flights.extend(
-        data.get("best_flights", [])
+    itineraries = data.get(
+        "itineraries",
+        [],
     )
 
-    raw_flights.extend(
-        data.get("other_flights", [])
+    legs = data.get(
+        "legs",
+        [],
     )
+
+    segments = data.get(
+        "segments",
+        [],
+    )
+
+    carriers = data.get(
+        "carriers",
+        [],
+    )
+
+    if not isinstance(itineraries, list):
+        itineraries = []
+
+    if not isinstance(legs, list):
+        legs = []
+
+    if not isinstance(segments, list):
+        segments = []
+
+    if not isinstance(carriers, list):
+        carriers = []
 
     print(
-        f"SerpApi results found: "
-        f"{len(raw_flights)}"
+        f"FlightAPI results: "
+        f"{len(itineraries)} itineraries, "
+        f"{len(legs)} legs, "
+        f"{len(segments)} segments"
     )
 
-    # =====================================================
-    # NO FLIGHTS FOUND
-    # =====================================================
+    # ========================================================
+    # NO RESULTS
+    # ========================================================
 
-    if not raw_flights:
+    if not itineraries:
 
         return {
             "success": True,
             "flights": [],
             "error_type": "no_results",
             "message": (
-                "No flights found for the "
-                "selected route and date."
+                "No flights found for the selected "
+                "route and date."
             ),
             "is_live": True,
         }
 
-    flights = []
+    # ========================================================
+    # CREATE LOOKUP MAPS
+    # ========================================================
 
-    # =====================================================
-    # CONVERT SERPAPI RESPONSE
-    # TO OUR FRONTEND FORMAT
-    # =====================================================
+    carrier_map = {}
 
-    for item in raw_flights:
+    for carrier in carriers:
 
-        segments = item.get(
-            "flights",
-            []
-        )
-
-        if not segments:
+        if not isinstance(carrier, dict):
             continue
 
-        first_segment = segments[0]
-        last_segment = segments[-1]
+        carrier_id = carrier.get("id")
 
-        departure_airport = first_segment.get(
-            "departure_airport",
-            {}
+        if carrier_id is not None:
+
+            carrier_map[str(carrier_id)] = carrier
+
+    segment_map = {}
+
+    for segment in segments:
+
+        if not isinstance(segment, dict):
+            continue
+
+        segment_id = segment.get("id")
+
+        if segment_id:
+
+            segment_map[str(segment_id)] = segment
+
+    leg_map = {}
+
+    for leg in legs:
+
+        if not isinstance(leg, dict):
+            continue
+
+        leg_id = leg.get("id")
+
+        if leg_id:
+
+            leg_map[str(leg_id)] = leg
+
+    # ========================================================
+    # NORMALIZE FLIGHT RESULTS
+    # ========================================================
+
+    flights = []
+
+    for itinerary in itineraries:
+
+        if not isinstance(itinerary, dict):
+            continue
+
+        # ----------------------------------------------------
+        # PRICING
+        # ----------------------------------------------------
+
+        price = None
+
+        pricing_options = itinerary.get(
+            "pricing_options",
+            [],
         )
 
-        arrival_airport = last_segment.get(
-            "arrival_airport",
-            {}
+        if isinstance(pricing_options, list) and pricing_options:
+
+            first_pricing = pricing_options[0]
+
+            if isinstance(first_pricing, dict):
+
+                price_data = first_pricing.get(
+                    "price",
+                    {},
+                )
+
+                if isinstance(price_data, dict):
+
+                    price = price_data.get(
+                        "amount"
+                    )
+
+        # ----------------------------------------------------
+        # FALLBACK PRICE FIELDS
+        # ----------------------------------------------------
+
+        if price is None:
+
+            price = itinerary.get(
+                "price"
+            )
+
+        if price is None:
+
+            price = itinerary.get(
+                "total_price"
+            )
+
+        # ----------------------------------------------------
+        # CONVERT PRICE TO NUMBER
+        # ----------------------------------------------------
+
+        if price is not None:
+
+            try:
+
+                price = float(price)
+
+            except (TypeError, ValueError):
+
+                price = None
+
+        # ----------------------------------------------------
+        # GET FIRST LEG
+        # ----------------------------------------------------
+
+        leg_ids = itinerary.get(
+            "leg_ids",
+            [],
         )
 
-        airline = first_segment.get(
-            "airline"
+        if not isinstance(leg_ids, list):
+
+            leg_ids = []
+
+        if not leg_ids:
+
+            continue
+
+        first_leg = leg_map.get(
+            str(leg_ids[0])
         )
 
-        flight_number = first_segment.get(
-            "flight_number"
+        if not first_leg:
+
+            continue
+
+        # ----------------------------------------------------
+        # ROUTE
+        # ----------------------------------------------------
+
+        origin_airport = (
+            first_leg.get("origin", {})
         )
 
-        departure_time = departure_airport.get(
-            "time"
+        destination_airport = (
+            first_leg.get("destination", {})
         )
 
-        arrival_time = arrival_airport.get(
-            "time"
+        if not isinstance(origin_airport, dict):
+
+            origin_airport = {}
+
+        if not isinstance(destination_airport, dict):
+
+            destination_airport = {}
+
+        flight_origin = (
+            origin_airport.get("id")
+            or origin_code
         )
 
-        transfers = max(
-            len(segments) - 1,
-            0
+        flight_destination = (
+            destination_airport.get("id")
+            or destination_code
         )
+
+        # ----------------------------------------------------
+        # DEPARTURE / ARRIVAL
+        # ----------------------------------------------------
+
+        departure_at = first_leg.get(
+            "departure"
+        )
+
+        arrival_at = first_leg.get(
+            "arrival"
+        )
+
+        # ----------------------------------------------------
+        # DURATION
+        # ----------------------------------------------------
+
+        duration = first_leg.get(
+            "duration"
+        )
+
+        try:
+
+            duration = int(duration)
+
+        except (TypeError, ValueError):
+
+            duration = None
+
+        # ----------------------------------------------------
+        # STOPS
+        # ----------------------------------------------------
+
+        transfers = first_leg.get(
+            "stop_count",
+            0,
+        )
+
+        try:
+
+            transfers = int(transfers)
+
+        except (TypeError, ValueError):
+
+            transfers = 0
+
+        # ----------------------------------------------------
+        # SEGMENTS
+        # ----------------------------------------------------
+
+        segment_ids = first_leg.get(
+            "segment_ids",
+            [],
+        )
+
+        if not isinstance(segment_ids, list):
+
+            segment_ids = []
+
+        first_segment = None
+
+        if segment_ids:
+
+            first_segment = segment_map.get(
+                str(segment_ids[0])
+            )
+
+        # ----------------------------------------------------
+        # AIRLINE / FLIGHT NUMBER
+        # ----------------------------------------------------
+
+        airline = None
+
+        flight_number = None
+
+        if first_segment:
+
+            marketing_carrier_id = (
+                first_segment.get(
+                    "marketing_carrier_id"
+                )
+            )
+
+            carrier = carrier_map.get(
+                str(marketing_carrier_id)
+            )
+
+            if carrier:
+
+                airline = (
+                    carrier.get("name")
+                    or carrier.get("code")
+                )
+
+            flight_number = (
+                first_segment.get(
+                    "marketing_flight_number"
+                )
+            )
+
+        # ----------------------------------------------------
+        # BOOKING LINK
+        # ----------------------------------------------------
+
+        link = None
+
+        if pricing_options:
+
+            first_pricing = pricing_options[0]
+
+            if isinstance(first_pricing, dict):
+
+                items = first_pricing.get(
+                    "items",
+                    [],
+                )
+
+                if isinstance(items, list) and items:
+
+                    first_item = items[0]
+
+                    if isinstance(first_item, dict):
+
+                        link = first_item.get(
+                            "url"
+                        )
+
+        # ----------------------------------------------------
+        # NORMALIZED RESULT
+        # ----------------------------------------------------
 
         flights.append(
             {
@@ -274,33 +598,23 @@ async def search_flights(
 
                 "flight_number": flight_number,
 
-                "origin": departure_airport.get(
-                    "id",
-                    origin_code,
-                ),
+                "origin": flight_origin,
 
-                "destination": arrival_airport.get(
-                    "id",
-                    destination_code,
-                ),
+                "destination": flight_destination,
 
-                "departure_at": departure_time,
+                "departure_at": departure_at,
 
-                "arrival_at": arrival_time,
+                "arrival_at": arrival_at,
 
-                "price": item.get(
-                    "price"
-                ),
+                "price": price,
 
                 "currency": "INR",
 
                 "transfers": transfers,
 
-                "duration": item.get(
-                    "total_duration"
-                ),
+                "duration": duration,
 
-                "link": None,
+                "link": link,
 
                 "is_fallback": False,
 
@@ -310,22 +624,53 @@ async def search_flights(
             }
         )
 
-    # =====================================================
+    # ========================================================
+    # REMOVE INVALID PRICE RESULTS
+    # ========================================================
+
+    flights = [
+        flight
+        for flight in flights
+        if flight.get("price") is not None
+    ]
+
+    # ========================================================
     # SORT BY PRICE
-    # =====================================================
+    # ========================================================
 
     flights.sort(
-        key=lambda x: (
-            x["price"]
-            if x["price"] is not None
+        key=lambda flight: (
+            flight.get("price")
+            if flight.get("price") is not None
             else float("inf")
         )
     )
+
+    # ========================================================
+    # NO NORMALIZED RESULTS
+    # ========================================================
+
+    if not flights:
+
+        return {
+            "success": True,
+            "flights": [],
+            "error_type": "no_results",
+            "message": (
+                "FlightAPI returned flight data, "
+                "but no usable priced flights were found."
+            ),
+            "is_live": True,
+        }
+
+    # ========================================================
+    # SUCCESS
+    # ========================================================
 
     return {
         "success": True,
         "flights": flights[:10],
         "error_type": None,
-        "message": "Flights fetched successfully",
+        "message": "Flights fetched successfully.",
         "is_live": True,
     }
