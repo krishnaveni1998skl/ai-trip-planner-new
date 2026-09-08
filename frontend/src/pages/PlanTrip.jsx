@@ -3495,6 +3495,18 @@ function PlaceCard({ place }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="flex items-center justify-between">
+        {place.image && (
+          <div className="mb-4 h-48 w-full overflow-hidden rounded-xl">
+            <img
+              src={place.image}
+              alt={place.name || "Place"}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          </div>
+        )}
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8D8C0] text-2xl">
           📍
         </div>
