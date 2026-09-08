@@ -4,128 +4,93 @@ import { Link } from "react-router-dom";
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  function closeMenu() {
-    setMenuOpen(false);
-  }
-
   return (
-    <nav className="sticky top-0 z-50 bg-[#123f35] px-4 py-4 text-white shadow-md sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        {/* =========================
-            TOP NAVBAR
-        ========================== */}
+    <nav className="sticky top-0 z-50 border-b border-[#8a5a32] bg-[#4A2C1A] text-white shadow-lg">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <Link
+          to="/"
+          className="flex items-center gap-3"
+          onClick={() => setMenuOpen(false)}
+        >
+          <img
+            src="/way-to-paradise-logo.jpg"
+            alt="Way to Paradise"
+            className="h-12 w-12 rounded-full object-cover"
+          />
 
-        <div className="flex items-center justify-between">
-          {/* LOGO + NAME */}
+          <div className="hidden sm:block">
+            <h1 className="font-serif text-lg font-semibold tracking-[0.15em]">
+              WAY TO PARADISE
+            </h1>
 
+            <p className="text-[9px] tracking-[0.2em] text-[#E8D8C0]">
+              TRAVELS · EXPLORE · REMEMBER
+            </p>
+          </div>
+        </Link>
+
+        <div className="hidden items-center gap-8 md:flex">
           <Link
             to="/"
-            onClick={closeMenu}
-            className="flex items-center gap-2 sm:gap-3"
+            className="text-sm font-medium transition hover:text-[#C89B3C]"
           >
-            <img
-              src="/way-to-paradise-logo.jpg"
-              alt="Way To Paradise"
-              className="h-11 w-11 object-contain sm:h-14 sm:w-14"
-            />
-
-            <div className="font-serif">
-              <h1 className="text-base font-bold tracking-wider sm:text-2xl">
-                WAY TO PARADISE
-              </h1>
-
-              <p className="text-[7px] tracking-[0.2em] text-gray-300 sm:text-[9px] sm:tracking-[0.3em]">
-                TRAVELS · EXPLORE · REMEMBER
-              </p>
-            </div>
+            Home
           </Link>
 
-          {/* =========================
-              DESKTOP NAVIGATION
-          ========================== */}
+          <Link
+            to="/my-trips"
+            className="text-sm font-medium transition hover:text-[#C89B3C]"
+          >
+            My Trips
+          </Link>
 
-          <div className="hidden items-center gap-5 lg:flex xl:gap-7">
+          <Link
+            to="/plan"
+            className="rounded-full bg-[#C89B3C] px-5 py-2 text-sm font-semibold text-[#2F2118] transition hover:bg-[#E8D8C0]"
+          >
+            Plan a Trip →
+          </Link>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="rounded-lg border border-[#A66A35] px-3 py-2 text-xl md:hidden"
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      {menuOpen && (
+        <div className="border-t border-[#8a5a32] bg-[#4A2C1A] px-4 py-4 md:hidden">
+          <div className="flex flex-col gap-3">
             <Link
               to="/"
-              className="font-medium transition hover:text-[#d4aa55]"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-4 py-3 text-sm hover:bg-[#6B4226]"
             >
               Home
             </Link>
 
-            
             <Link
               to="/my-trips"
-              className="font-medium transition hover:text-[#d4aa55]"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-4 py-3 text-sm hover:bg-[#6B4226]"
             >
               My Trips
             </Link>
 
-            
-
-            {/* PLAN TRIP BUTTON */}
-
             <Link
               to="/plan"
-              className="rounded-full bg-white px-5 py-3 font-semibold text-[#123f35] transition duration-300 hover:bg-[#d4aa55] hover:text-white"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg bg-[#C89B3C] px-4 py-3 text-center text-sm font-semibold text-[#2F2118]"
             >
               Plan a Trip →
             </Link>
           </div>
-
-          {/* =========================
-              MOBILE MENU BUTTON
-          ========================== */}
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((previous) => !previous)}
-            className="rounded-lg border border-white/20 px-3 py-2 text-2xl transition hover:bg-white/10 lg:hidden"
-            aria-label="Toggle navigation menu"
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? "✕" : "☰"}
-          </button>
         </div>
-
-        {/* =========================
-            MOBILE / TABLET MENU
-        ========================== */}
-
-        {menuOpen && (
-          <div className="mt-4 border-t border-white/15 pt-4 lg:hidden">
-            <div className="flex flex-col gap-1">
-              <Link
-                to="/"
-                onClick={closeMenu}
-                className="rounded-lg px-4 py-3 font-medium transition hover:bg-white/10"
-              >
-                Home
-              </Link>
-
-              
-              <Link
-                to="/my-trips"
-                onClick={closeMenu}
-                className="rounded-lg px-4 py-3 font-medium transition hover:bg-white/10"
-              >
-                My Trips
-              </Link>
-
-              
-
-              {/* MOBILE PLAN BUTTON */}
-
-              <Link
-                to="/plan"
-                onClick={closeMenu}
-                className="mt-2 rounded-full bg-white px-6 py-3 text-center font-semibold text-[#123f35] transition hover:bg-[#d4aa55] hover:text-white"
-              >
-                Plan a Trip →
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </nav>
   );
 }

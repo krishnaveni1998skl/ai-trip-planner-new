@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import TripMap from "../components/TripMap";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 const NAV_ITEMS = [
   "Overview",
   "Itinerary",
@@ -955,10 +955,16 @@ function PlanTrip() {
       if (!data.success) {
         throw new Error(data.message || "Unable to load hotels");
       }
-
-      const hotelResults = data.hotels || [];
-
-      setHotels(hotelResults);
+     const hotelResults = (data.hotels || []).slice(0, 5);
+     console.log("5 HOTEL RESULTS:", hotelResults);
+     console.log(
+       "5 HOTEL IMAGE URLS:",
+       hotelResults.map((hotel) => ({
+         name: hotel.name,
+         image: hotel.image,
+       })),
+     );
+     setHotels(hotelResults);
 
       // ==========================================
       // GET CHEAPEST HOTEL TOTAL PRICE
@@ -1176,6 +1182,7 @@ function PlanTrip() {
       const flightResults = data.flights || [];
 console.log("Frontend flights count:", flightResults.length);
 console.log("Frontend flights:", flightResults);
+const topFiveFlights = flightResults.slice(0, 5);
       setFlights(flightResults);
 
       // ==========================================
@@ -1552,27 +1559,98 @@ console.log("Frontend flights:", flightResults);
     // ========================================
 
     if (!tripData.destination) {
-      return (
-        <div className="flex min-h-[520px] items-center justify-center">
-          <div className="w-full max-w-2xl px-6 text-center">
-            <div className="mb-6 text-6xl">✈️</div>
+      const examplePrompts = [
+        "Plan a trip to Dubai for 5 days with ₹2,00,000 budget.",
+        "Suggest a honeymoon trip to Maldives for 4 days.",
+        "Plan a family trip to Singapore for 6 days.",
+        "Show me a budget trip to Thailand for 5 days.",
+      ];
 
-            <h2 className="font-serif text-4xl font-bold text-[#24382c]">
+      return (
+        <div className="relative min-h-full overflow-hidden bg-gradient-to-br from-[#F8F0E3] via-[#FBF7EF] to-[#E8D6BB] px-5 py-8 sm:px-8 lg:px-10">
+
+          {/* SOFT DECORATIVE GLOW */}
+          <div className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-[#D8B98A]/20 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-[#E0B56A]/10 blur-3xl" />
+
+          <div className="relative z-10 max-w-3xl">
+
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#A66A35]">
+              ✦ Paradise AI
+            </p>
+
+            <h2 className="mt-4 font-serif text-3xl font-bold leading-tight text-[#3A2518] sm:text-4xl">
               Plan Your Journey
             </h2>
 
-            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-gray-600">
-              Start chatting with Paradise AI. Tell me your destination, number
-              of days, travel dates, travelers and budget.
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#6B5542] sm:text-base">
+              Start chatting with Paradise AI. Tell me your destination,
+              number of days, travel dates, travelers and budget.
             </p>
 
-            <div className="mt-8 rounded-2xl border border-[#d9c9a5] bg-white p-6 text-left shadow-sm">
-              <p className="font-semibold text-[#24382c]">Example</p>
 
-              <p className="mt-2 text-sm leading-7 text-gray-600">
-                Plan a trip to Dubai for 5 days with ₹2,00,000 budget.
-              </p>
+            {/* EXAMPLE PROMPTS */}
+            <div className="mt-8 w-full max-w-[620px] rounded-3xl border border-[#D8B98A]/70 bg-[#FBF7EF]/95 p-5 shadow-[0_15px_40px_rgba(74,44,26,0.12)] sm:p-6">
+
+              <div className="mb-4 flex items-center gap-3">
+                <span className="text-xl">☀️</span>
+
+                <h3 className="text-sm font-bold text-[#3A281C]">
+                  Try these examples
+                </h3>
+              </div>
+
+              {examplePrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => setInput(prompt)}
+                  className="group mt-2 flex w-full items-center justify-between rounded-xl border border-[#EEE2D0] bg-white px-4 py-3 text-left text-xs text-[#4A3425] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#FFF8ED] hover:shadow-md sm:text-sm"
+                >
+                  <span>{prompt}</span>
+
+                  <span className="ml-3 shrink-0 text-[#8A4A1B] transition group-hover:translate-x-1">
+                    →
+                  </span>
+                </button>
+              ))}
             </div>
+
+
+            {/* RIGHT DECORATIVE SIGN */}
+            <div className="pointer-events-none absolute right-0 top-16 hidden w-[260px] lg:block">
+
+              <div className="rotate-[-5deg] text-center font-serif text-xl italic leading-6 text-[#4A2C1A]">
+                Good Trips
+                <br />
+                Create
+                <br />
+                Great Stories
+              </div>
+
+              <div className="relative mx-auto mt-8 h-[230px] w-[230px]">
+
+                <div className="absolute left-1/2 top-0 h-[195px] w-2 -translate-x-1/2 rounded-full bg-[#6B4226]" />
+
+                <div className="absolute left-2 top-12 w-[185px] rotate-[-5deg] rounded-md bg-[#A66A35] px-5 py-2 text-center font-serif text-lg text-white shadow-md">
+                  Explore
+                </div>
+
+                <div className="absolute left-7 top-20 w-[185px] rotate-[3deg] rounded-md bg-[#8D572D] px-5 py-2 text-center font-serif text-lg text-white shadow-md">
+                  Dream
+                </div>
+
+                <div className="absolute left-4 top-28 w-[185px] rotate-[-2deg] rounded-md bg-[#A66A35] px-5 py-2 text-center font-serif text-lg text-white shadow-md">
+                  Discover
+                </div>
+
+                <div className="absolute left-8 top-36 w-[185px] rotate-[3deg] rounded-md bg-[#7A4018] px-5 py-2 text-center font-serif text-lg text-white shadow-md">
+                  Repeat
+                </div>
+
+              </div>
+            </div>
+
           </div>
         </div>
       );
@@ -1589,7 +1667,7 @@ console.log("Frontend flights:", flightResults);
           title="Trip Overview"
           description="A quick summary of your planned trip."
         >
-          <div className="rounded-3xl border border-[#d9c9a5] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[#D8B98A] bg-white p-6 shadow-sm">
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <InfoCard
                 icon="📍"
@@ -1641,8 +1719,8 @@ console.log("Frontend flights:", flightResults);
             </div>
           </div>
 
-          <div className="mt-6 rounded-3xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
-            <h3 className="text-xl font-bold text-[#24382c]">
+          <div className="mt-6 rounded-3xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
+            <h3 className="text-xl font-bold text-[#4A2C1A]">
               Travel Preferences
             </h3>
 
@@ -1677,7 +1755,7 @@ console.log("Frontend flights:", flightResults);
           title="AI Itinerary"
           description={`Personalized ${tripData.duration || ""}-day itinerary for ${tripData.destination}.`}
         >
-          <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+          <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
             <p className="text-sm text-gray-600">
               Let AI create a personalized day-by-day travel plan based on your
               destination, dates, budget and travel preferences.
@@ -1687,7 +1765,7 @@ console.log("Frontend flights:", flightResults);
               type="button"
               onClick={generateItinerary}
               disabled={itineraryLoading}
-              className="mt-5 rounded-xl bg-[#24382c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 rounded-xl bg-[#4A2C1A] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {itineraryLoading
                 ? "Generating AI Itinerary..."
@@ -1702,10 +1780,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {itineraryLoading && (
-            <div className="mt-5 rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="mt-5 rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🤖</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 Creating your itinerary...
               </p>
 
@@ -1716,10 +1794,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {!itineraryLoading && !itineraryError && !itinerary && (
-            <div className="mt-5 rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="mt-5 rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🗺️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 No itinerary generated yet
               </p>
 
@@ -1734,9 +1812,9 @@ console.log("Frontend flights:", flightResults);
               {itinerary.days?.map((day) => (
                 <div
                   key={day.day}
-                  className="overflow-hidden rounded-3xl border border-[#d9c9a5] bg-white shadow-sm"
+                  className="overflow-hidden rounded-3xl border border-[#D8B98A] bg-white shadow-sm"
                 >
-                  <div className="bg-[#24382c] p-5 text-white">
+                  <div className="bg-[#4A2C1A] p-5 text-white">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-xl font-bold">
                         Day {day.day} — {day.title}
@@ -1753,12 +1831,12 @@ console.log("Frontend flights:", flightResults);
                         className="rounded-2xl border border-[#eadfc9] bg-[#fffdf8] p-5"
                       >
                         <div className="flex gap-4">
-                          <div className="min-w-[80px] text-sm font-bold text-[#24382c]">
+                          <div className="min-w-[80px] text-sm font-bold text-[#4A2C1A]">
                             {activity.time}
                           </div>
 
                           <div>
-                            <h4 className="font-bold text-[#24382c]">
+                            <h4 className="font-bold text-[#4A2C1A]">
                               {activity.activity}
                             </h4>
 
@@ -1777,13 +1855,13 @@ console.log("Frontend flights:", flightResults);
                   SAVE TRIP
               ======================================== */}
 
-              <div className="rounded-3xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+              <div className="rounded-3xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b4883d]">
                       My Trips
                     </p>
-                    <h3 className="mt-2 text-xl font-bold text-[#24382c]">
+                    <h3 className="mt-2 text-xl font-bold text-[#4A2C1A]">
                       Save this itinerary
                     </h3>
                     <p className="mt-1 text-sm text-gray-600">
@@ -1797,7 +1875,7 @@ console.log("Frontend flights:", flightResults);
                     disabled={
                       !tripData.destination || !tripData.startDate || !itinerary
                     }
-                    className="rounded-xl bg-[#b79b5b] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#a48a4d] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-[#C89B3C] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#A77C2E] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {savedTripId ? "✓ Trip Saved" : "💾 Save Trip"}
                   </button>
@@ -1810,11 +1888,11 @@ console.log("Frontend flights:", flightResults);
 
               {Array.isArray(itinerary.travel_sources) &&
                 itinerary.travel_sources.length > 0 && (
-                  <div className="rounded-3xl border border-[#d9c9a5] bg-white p-6 shadow-sm">
+                  <div className="rounded-3xl border border-[#D8B98A] bg-white p-6 shadow-sm">
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">📚</span>
                       <div>
-                        <h3 className="text-2xl font-bold text-[#24382c]">
+                        <h3 className="text-2xl font-bold text-[#4A2C1A]">
                           Travel Sources
                         </h3>
                         <p className="mt-1 text-sm text-gray-600">
@@ -1840,7 +1918,7 @@ console.log("Frontend flights:", flightResults);
                             </div>
 
                             <div className="min-w-0">
-                              <p className="font-semibold text-[#24382c]">
+                              <p className="font-semibold text-[#4A2C1A]">
                                 {fileName}
                               </p>
                               <p className="mt-1 text-xs text-gray-500">
@@ -1858,7 +1936,7 @@ console.log("Frontend flights:", flightResults);
               {(!Array.isArray(itinerary.travel_sources) ||
                 itinerary.travel_sources.length === 0) && (
                 <div className="rounded-3xl border border-[#eadfc9] bg-[#fffdf8] p-6">
-                  <p className="font-semibold text-[#24382c]">
+                  <p className="font-semibold text-[#4A2C1A]">
                     📚 Travel Sources
                   </p>
                   <p className="mt-2 text-sm text-gray-600">
@@ -1882,9 +1960,9 @@ console.log("Frontend flights:", flightResults);
         <SectionContainer
           icon="✈️"
           title="Flights"
-          description="Flight options for your journey."
+          description={`Best flight options for your ${tripData.destination || "trip"} (Showing top 5 results)`}
         >
-          <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+          <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
             <div className="grid gap-4 md:grid-cols-4">
               <DetailRow
                 label="From"
@@ -1908,7 +1986,7 @@ console.log("Frontend flights:", flightResults);
               type="button"
               onClick={searchFlights}
               disabled={flightsLoading}
-              className="mt-6 rounded-xl bg-[#24382c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 rounded-xl bg-[#4A2C1A] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {flightsLoading ? "Searching Flights..." : "Search Flights"}
             </button>
@@ -1921,10 +1999,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {flightsLoading && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">✈️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 Finding flights...
               </p>
 
@@ -1935,10 +2013,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {!flightsLoading && !flightsError && flights.length === 0 && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">✈️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 No flights searched yet
               </p>
 
@@ -1953,19 +2031,17 @@ console.log("Frontend flights:", flightResults);
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                   Found{" "}
-                  <span className="font-semibold text-[#24382c]">
+                  <span className="font-semibold text-[#4A2C1A]">
                     {flights.length}
                   </span>{" "}
                   flights
                 </p>
 
-                <p className="text-xs text-gray-500">
-                  FlightAPI
-                </p>
+                <p className="text-xs text-gray-500">FlightAPI</p>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-2">
-                {flights.map((flight, index) => (
+              <div className="space-y-4">
+                {flights.slice(0, 5).map((flight, index) => (
                   <FlightCard
                     key={`${flight.flight_number || "flight"}-${index}`}
                     flight={flight}
@@ -1994,8 +2070,8 @@ console.log("Frontend flights:", flightResults);
           }
         >
           {(!tripData.startDate || !tripData.endDate) && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
-              <p className="font-semibold text-[#24382c]">
+            <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
+              <p className="font-semibold text-[#4A2C1A]">
                 📅 Travel dates required
               </p>
 
@@ -2007,10 +2083,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {tripData.startDate && tripData.endDate && hotelsLoading && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🏨</div>
 
-              <p className="mt-4 font-medium text-[#24382c]">
+              <p className="mt-4 font-medium text-[#4A2C1A]">
                 Finding hotels in {tripData.destination}...
               </p>
 
@@ -2034,7 +2110,7 @@ console.log("Frontend flights:", flightResults);
                     tripData.travelers || 1,
                   )
                 }
-                className="mt-4 rounded-xl bg-[#24382c] px-5 py-2.5 text-sm font-semibold text-white"
+                className="mt-4 rounded-xl bg-[#4A2C1A] px-5 py-2.5 text-sm font-semibold text-white"
               >
                 Try Again
               </button>
@@ -2046,10 +2122,10 @@ console.log("Frontend flights:", flightResults);
             !hotelsLoading &&
             !hotelsError &&
             hotels.length === 0 && (
-              <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+              <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
                 <div className="text-5xl">🏨</div>
 
-                <p className="mt-4 font-semibold text-[#24382c]">
+                <p className="mt-4 font-semibold text-[#4A2C1A]">
                   No hotels found
                 </p>
 
@@ -2068,7 +2144,7 @@ console.log("Frontend flights:", flightResults);
                       tripData.travelers || 1,
                     )
                   }
-                  className="mt-4 rounded-xl bg-[#24382c] px-5 py-2.5 text-sm font-semibold text-white"
+                  className="mt-4 rounded-xl bg-[#4A2C1A] px-5 py-2.5 text-sm font-semibold text-white"
                 >
                   Search Again
                 </button>
@@ -2080,7 +2156,7 @@ console.log("Frontend flights:", flightResults);
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                   Found{" "}
-                  <span className="font-semibold text-[#24382c]">
+                  <span className="font-semibold text-[#4A2C1A]">
                     {hotels.length}
                   </span>{" "}
                   hotels
@@ -2114,7 +2190,7 @@ console.log("Frontend flights:", flightResults);
           title="Restaurants"
           description="Restaurant options for your journey."
         >
-          <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+          <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
             <div className="grid gap-4 md:grid-cols-3">
               <DetailRow
                 label="City"
@@ -2130,7 +2206,7 @@ console.log("Frontend flights:", flightResults);
               type="button"
               onClick={searchRestaurants}
               disabled={restaurantsLoading}
-              className="mt-6 rounded-xl bg-[#24382c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 rounded-xl bg-[#4A2C1A] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {restaurantsLoading
                 ? "Searching Restaurants..."
@@ -2145,10 +2221,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {restaurantsLoading && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🍽️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 Finding restaurants...
               </p>
 
@@ -2161,10 +2237,10 @@ console.log("Frontend flights:", flightResults);
           {!restaurantsLoading &&
             !restaurantsError &&
             restaurants.length === 0 && (
-              <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+              <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
                 <div className="text-5xl">🍽️</div>
 
-                <p className="mt-4 font-semibold text-[#24382c]">
+                <p className="mt-4 font-semibold text-[#4A2C1A]">
                   No restaurants searched yet
                 </p>
 
@@ -2181,7 +2257,7 @@ console.log("Frontend flights:", flightResults);
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-600">
                     Found{" "}
-                    <span className="font-semibold text-[#24382c]">
+                    <span className="font-semibold text-[#4A2C1A]">
                       {restaurants.length}
                     </span>{" "}
                     restaurants
@@ -2219,14 +2295,14 @@ console.log("Frontend flights:", flightResults);
           title="Weather"
           description={`Weather information for ${tripData.destination}.`}
         >
-          <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+          <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
             <DetailRow label="Destination" value={tripData.destination} />
 
             <button
               type="button"
               onClick={loadWeather}
               disabled={weatherLoading}
-              className="mt-6 rounded-xl bg-[#24382c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 rounded-xl bg-[#4A2C1A] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {weatherLoading ? "Loading Weather..." : "Check Weather"}
             </button>
@@ -2239,10 +2315,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {weatherLoading && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🌤️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 Checking weather...
               </p>
 
@@ -2281,10 +2357,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {!weatherLoading && !weatherError && !weather && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">🌤️</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 No weather searched yet
               </p>
 
@@ -2308,7 +2384,7 @@ console.log("Frontend flights:", flightResults);
           title="Places"
           description="Tourist attractions and places to explore."
         >
-          <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] p-6">
+          <div className="rounded-2xl border border-[#D8B98A] bg-[#FBF7EF] p-6">
             <div className="grid gap-4 md:grid-cols-2">
               <DetailRow
                 label="City"
@@ -2322,7 +2398,7 @@ console.log("Frontend flights:", flightResults);
               type="button"
               onClick={searchPlaces}
               disabled={placesLoading}
-              className="mt-6 rounded-xl bg-[#24382c] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-6 rounded-xl bg-[#4A2C1A] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#354d3d] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {placesLoading ? "Searching Places..." : "Search Places"}
             </button>
@@ -2335,10 +2411,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {placesLoading && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">📍</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 Finding places...
               </p>
 
@@ -2349,10 +2425,10 @@ console.log("Frontend flights:", flightResults);
           )}
 
           {!placesLoading && !placesError && places.length === 0 && (
-            <div className="rounded-2xl border border-[#d9c9a5] bg-white p-8 text-center">
+            <div className="rounded-2xl border border-[#D8B98A] bg-white p-8 text-center">
               <div className="text-5xl">📍</div>
 
-              <p className="mt-4 font-semibold text-[#24382c]">
+              <p className="mt-4 font-semibold text-[#4A2C1A]">
                 No places searched yet
               </p>
 
@@ -2367,7 +2443,7 @@ console.log("Frontend flights:", flightResults);
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                   Found{" "}
-                  <span className="font-semibold text-[#24382c]">
+                  <span className="font-semibold text-[#4A2C1A]">
                     {places.length}
                   </span>{" "}
                   places
@@ -2446,7 +2522,7 @@ console.log("Frontend flights:", flightResults);
               TRIP SUMMARY
           ================================= */}
 
-          <div className="rounded-3xl border border-[#d9c9a5] bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-[#D8B98A] bg-white p-6 shadow-sm">
             <div className="grid gap-5 sm:grid-cols-3">
               <InfoCard
                 icon="📍"
@@ -2472,10 +2548,10 @@ console.log("Frontend flights:", flightResults);
               BUDGET USAGE
           ================================= */}
 
-          <div className="rounded-3xl bg-[#24382c] p-7 text-white">
+          <div className="rounded-3xl bg-[#4A2C1A] p-7 text-white">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-[#d9c9a5]">Budget Usage</p>
+                <p className="text-sm text-[#D8B98A]">Budget Usage</p>
 
                 <p className="mt-2 text-3xl font-bold">
                   {budgetPercentage}% used
@@ -2487,7 +2563,7 @@ console.log("Frontend flights:", flightResults);
                   ⚠️ Over Budget
                 </div>
               ) : (
-                <div className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-[#d9c9a5]">
+                <div className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-[#D8B98A]">
                   ✓ Within Budget
                 </div>
               )}
@@ -2496,7 +2572,7 @@ console.log("Frontend flights:", flightResults);
             <div className="mt-6 h-4 overflow-hidden rounded-full bg-white/10">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isOverBudget ? "bg-red-500" : "bg-[#d9c9a5]"
+                  isOverBudget ? "bg-red-500" : "bg-[#D8B98A]"
                 }`}
                 style={{
                   width: `${progressWidth}%`,
@@ -2546,12 +2622,12 @@ console.log("Frontend flights:", flightResults);
               EXPENSE INPUT
           ================================= */}
 
-          <div className="rounded-3xl border border-[#d9c9a5] bg-white p-6">
+          <div className="rounded-3xl border border-[#D8B98A] bg-white p-6">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#b4883d]">
               Expense Breakdown
             </p>
 
-            <h3 className="mt-2 text-2xl font-bold text-[#24382c]">
+            <h3 className="mt-2 text-2xl font-bold text-[#4A2C1A]">
               Where will you spend?
             </h3>
 
@@ -2573,19 +2649,19 @@ console.log("Frontend flights:", flightResults);
                         {field.icon}
                       </div>
 
-                      <label className="font-semibold text-[#24382c]">
+                      <label className="font-semibold text-[#4A2C1A]">
                         {field.label}
                       </label>
                     </div>
 
                     {field.auto && (
-                      <span className="rounded-full bg-[#eee6d4] px-3 py-1 text-xs font-semibold text-[#24382c]">
+                      <span className="rounded-full bg-[#E8D8C0] px-3 py-1 text-xs font-semibold text-[#4A2C1A]">
                         Auto
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center rounded-xl border border-[#d9c9a5] bg-white px-4">
+                  <div className="mt-4 flex items-center rounded-xl border border-[#D8B98A] bg-white px-4">
                     <span className="text-[#b4883d]">₹</span>
 
                     <input
@@ -2616,7 +2692,7 @@ console.log("Frontend flights:", flightResults);
               BUDGET SUMMARY
           ================================= */}
 
-          <div className="rounded-3xl bg-[#f8f3e7] p-7">
+          <div className="rounded-3xl bg-[#FBF7EF] p-7">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#b4883d]">
               Budget Summary
             </p>
@@ -2625,13 +2701,13 @@ console.log("Frontend flights:", flightResults);
               {expenseFields.map((field) => (
                 <div
                   key={field.key}
-                  className="flex items-center justify-between border-b border-[#d9c9a5] pb-4"
+                  className="flex items-center justify-between border-b border-[#D8B98A] pb-4"
                 >
                   <span className="text-sm text-gray-600">
                     {field.icon} {field.label}
                   </span>
 
-                  <span className="font-semibold text-[#24382c]">
+                  <span className="font-semibold text-[#4A2C1A]">
                     {formatCurrency(expenses[field.key])}
                   </span>
                 </div>
@@ -2639,11 +2715,11 @@ console.log("Frontend flights:", flightResults);
             </div>
 
             <div className="mt-6 flex items-center justify-between">
-              <span className="font-bold text-[#24382c]">Total Estimated</span>
+              <span className="font-bold text-[#4A2C1A]">Total Estimated</span>
 
               <span
                 className={`text-2xl font-bold ${
-                  isOverBudget ? "text-red-600" : "text-[#24382c]"
+                  isOverBudget ? "text-red-600" : "text-[#4A2C1A]"
                 }`}
               >
                 {formatCurrency(totalEstimated)}
@@ -2651,7 +2727,7 @@ console.log("Frontend flights:", flightResults);
             </div>
 
             <div className="mt-4 flex items-center justify-between">
-              <span className="font-bold text-[#24382c]">
+              <span className="font-bold text-[#4A2C1A]">
                 {isOverBudget ? "Over Budget" : "Remaining"}
               </span>
 
@@ -2677,7 +2753,7 @@ console.log("Frontend flights:", flightResults);
                 ⚠️ Budget Alert
               </p>
 
-              <h3 className="mt-3 text-2xl font-bold text-[#24382c]">
+              <h3 className="mt-3 text-2xl font-bold text-[#4A2C1A]">
                 Your estimated cost is over the budget.
               </h3>
 
@@ -2702,54 +2778,40 @@ console.log("Frontend flights:", flightResults);
   // ==========================================
 
   return (
-    <div className="min-h-screen bg-[#f5f0e4]">
-      {/* HEADER */}
+    <div className="min-h-screen overflow-hidden bg-[#F3E7D3] text-[#3A281C]">
+      
 
-      <header className="border-b border-[#d8c9a8] bg-[#24382c] px-4 py-4 text-white">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between">
-          <div>
-            <h1 className="font-serif text-2xl font-semibold">
-              Way to Paradise
-            </h1>
+      {/* =====================================================
+          MAIN APPLICATION
+      ===================================================== */}
 
-            <p className="text-xs text-[#d9c9a5]">AI Trip Planner</p>
-          </div>
+      <main className="mx-auto flex w-full max-w-[1600px] min-w-0 flex-col lg:h-[calc(100vh-80px)] lg:flex-row">
+        {/* ===================================================
+            LEFT CHAT PANEL
+        =================================================== */}
 
-          <p className="hidden text-sm md:block">
-            Plan smarter. Travel better.
-          </p>
-        </div>
-      </header>
-
-      {/* MAIN */}
-
-      <main className="mx-auto flex max-w-[1600px] flex-col lg:h-[calc(100vh-81px)] lg:flex-row">
-        {/* CHAT SIDEBAR */}
-
-        <aside className="flex w-full flex-col border-b border-[#d8c9a8] bg-[#eee6d4] lg:w-[380px] lg:border-b-0 lg:border-r">
+        <aside className="flex w-full shrink-0 flex-col border-b border-[#C9A878] bg-[#E6D2B5] lg:w-[350px] lg:border-b-0 lg:border-r">
           {/* AI HEADER */}
-
-          <div className="border-b border-[#d8c9a8] p-5">
+          <div className="shrink-0 border-b border-[#C9A878] px-5 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#24382c] text-xl">
-                ✨
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#4A2C1A] text-xl text-[#E7C76B] shadow-md">
+                ✦
               </div>
 
               <div>
-                <h2 className="font-serif text-xl font-semibold text-[#24382c]">
+                <h2 className="font-serif text-xl font-bold text-[#4A2C1A]">
                   Paradise AI
                 </h2>
 
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-[#7A5A3A]">
                   Your personal travel assistant
                 </p>
               </div>
             </div>
           </div>
 
-          {/* CHAT */}
-
-          <div className="flex-1 space-y-4 overflow-y-auto p-5 lg:min-h-0">
+          {/* CHAT MESSAGES */}
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 lg:min-h-0">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -2758,10 +2820,10 @@ console.log("Frontend flights:", flightResults);
                 }`}
               >
                 <div
-                  className={`max-w-[90%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-6 ${
+                  className={`max-w-[92%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-5 shadow-sm ${
                     message.role === "user"
-                      ? "bg-[#24382c] text-white"
-                      : "border border-[#d9c9a5] bg-[#f8f3e7] text-[#35463b]"
+                      ? "rounded-br-md bg-[#6B3A13] text-white"
+                      : "rounded-bl-md border border-[#D8B98A] bg-[#FBF7EF] text-[#4A3425]"
                   }`}
                 >
                   {message.text}
@@ -2770,58 +2832,63 @@ console.log("Frontend flights:", flightResults);
             ))}
 
             {loading && (
-              <div className="rounded-2xl border border-[#d9c9a5] bg-[#f8f3e7] px-4 py-3 text-sm text-gray-600">
-                ✨ Paradise AI is thinking...
+              <div className="w-fit rounded-2xl rounded-bl-md border border-[#D8B98A] bg-[#FBF7EF] px-4 py-3 text-sm text-[#7A5A3A]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-[#A66A35]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-[#A66A35] [animation-delay:150ms]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-[#A66A35] [animation-delay:300ms]" />
+                </div>
               </div>
             )}
           </div>
 
-          {/* INPUT */}
-
-          <div className="border-t border-[#d8c9a8] p-4">
-            <div className="flex items-end gap-2 rounded-2xl border border-[#cdbd99] bg-white p-2">
+          {/* CHAT INPUT */}
+          <div className="shrink-0 border-t border-[#C9A878] p-4">
+            <div className="flex items-end gap-2 rounded-2xl border border-[#C9A878] bg-[#FFFDF8] p-2 shadow-sm">
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={2}
                 placeholder="Tell me about your trip..."
-                className="min-h-[50px] flex-1 resize-none border-0 bg-transparent px-2 py-2 text-sm text-gray-700 outline-none"
+                className="min-h-[48px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-[#4A3425] outline-none placeholder:text-[#9B8875]"
               />
 
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={loading || !input.trim()}
-                className="rounded-xl bg-[#b79b5b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#a48a4d] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#7A4018] text-lg text-white shadow-md transition hover:bg-[#8D4B1B] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Send message"
               >
-                Send
+                ➤
               </button>
             </div>
 
-            <p className="mt-2 text-center text-[11px] text-gray-500">
+            <p className="mt-2 text-center text-[10px] text-[#8A7058]">
               Enter to send
             </p>
           </div>
         </aside>
 
-        {/* RIGHT SIDE */}
+        {/* ===================================================
+            RIGHT CONTENT
+        =================================================== */}
 
-        <section className="flex min-w-0 flex-1 flex-col bg-[#f8f3e7]">
-          {/* NAVIGATION */}
-
-          <nav className="border-b border-[#d8c9a8] bg-white px-4 py-3">
-            <div className="flex gap-2 overflow-x-auto">
+        <section className="flex min-w-0 flex-1 flex-col bg-[#F8F0E3]">
+          {/* SECTION NAV */}
+          <nav className="shrink-0 border-b border-[#D8B98A] bg-[#FBF5EA] px-4 py-3 shadow-sm">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {NAV_ITEMS.map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => setActiveSection(item)}
                   disabled={!tripData.destination}
-                  className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition duration-300 sm:text-sm ${
                     activeSection === item
-                      ? "bg-[#24382c] text-white"
-                      : "bg-[#eee6d4] text-[#35463b] hover:bg-[#e2d7bd]"
+                      ? "bg-[#6B3A13] text-white shadow-md"
+                      : "bg-[#E8D8C0] text-[#5A3A25] hover:bg-[#D9C2A0]"
                   } ${
                     !tripData.destination ? "cursor-not-allowed opacity-50" : ""
                   }`}
@@ -2833,9 +2900,10 @@ console.log("Frontend flights:", flightResults);
           </nav>
 
           {/* CONTENT */}
-
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <div className="mx-auto max-w-6xl">{renderContent()}</div>
+          <div className="min-w-0 flex-1 overflow-y-auto">
+            <div className="mx-auto min-h-full w-full max-w-6xl">
+              {renderContent()}
+            </div>
           </div>
         </section>
       </main>
@@ -2849,14 +2917,14 @@ console.log("Frontend flights:", flightResults);
 
 function InfoCard({ icon, title, value }) {
   return (
-    <div className="rounded-2xl border border-[#d9c9a5] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#D8B98A] bg-white p-5 shadow-sm">
       <div className="text-2xl">{icon}</div>
 
       <p className="mt-3 text-xs uppercase tracking-wide text-gray-500">
         {title}
       </p>
 
-      <p className="mt-1 font-semibold text-[#24382c]">{value}</p>
+      <p className="mt-1 font-semibold text-[#4A2C1A]">{value}</p>
     </div>
   );
 }
@@ -2867,10 +2935,10 @@ function InfoCard({ icon, title, value }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div className="rounded-xl bg-[#f8f3e7] p-4">
+    <div className="rounded-xl bg-[#FBF7EF] p-4">
       <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
 
-      <p className="mt-1 font-semibold text-[#24382c]">{value}</p>
+      <p className="mt-1 font-semibold text-[#4A2C1A]">{value}</p>
     </div>
   );
 }
@@ -2886,7 +2954,7 @@ function SectionContainer({ icon, title, description, children }) {
         <div className="flex items-center gap-3">
           <span className="text-3xl">{icon}</span>
 
-          <h2 className="font-serif text-3xl font-bold text-[#24382c]">
+          <h2 className="font-serif text-3xl font-bold text-[#4A2C1A]">
             {title}
           </h2>
         </div>
@@ -2899,8 +2967,10 @@ function SectionContainer({ icon, title, description, children }) {
   );
 }
 
+
+
 // ==========================================
-// FLIGHT CARD
+// FLIGHT CARD - LUXURY HORIZONTAL DESIGN
 // ==========================================
 
 function FlightCard({ flight }) {
@@ -2909,271 +2979,446 @@ function FlightCard({ flight }) {
       return "Price unavailable";
     }
 
-    return `${currency || "INR"} ${Number(price).toLocaleString()}`;
+    return `${currency || "INR"} ${Number(price).toLocaleString("en-IN")}`;
   };
 
+  const airlineName = flight.airline || "Airline";
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#d9c9a5] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eee6d4] text-2xl">
-          ✈️
+    <div className="group rounded-2xl border border-[#e4d3b8] bg-white px-5 py-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
+      <div className="grid items-center gap-5 lg:grid-cols-[1.4fr_1fr_1fr_1fr_0.9fr_auto]">
+        {/* =====================================
+            AIRLINE
+        ===================================== */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#eadbc5]">
+            <span className="text-3xl">✈️</span>
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-[#3f2415]">
+              {airlineName}
+            </p>
+
+            <p className="mt-1 text-sm text-[#806b59]">
+              {flight.flight_number || "Flight"}
+            </p>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-full bg-[#e7f3ec] px-2.5 py-1 text-[10px] font-semibold text-[#28734a]">
+                Refundable
+              </span>
+
+              <span className="rounded-full bg-[#e8f0f5] px-2.5 py-1 text-[10px] font-semibold text-[#41677f]">
+                Baggage included
+              </span>
+            </div>
+          </div>
         </div>
 
-        <span className="rounded-full bg-[#eee6d4] px-3 py-1 text-xs font-semibold text-[#24382c]">
-          {flight.airline || "Airline"}
-        </span>
-      </div>
-
-      <div className="mt-5 grid grid-cols-3 items-center gap-3">
+        {/* =====================================
+            FROM
+        ===================================== */}
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">From</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-[#9a8978]">
+            From
+          </p>
 
-          <p className="mt-1 font-semibold text-[#24382c]">
+          <p className="mt-1 text-xl font-bold text-[#3f2415]">
             {flight.origin || "N/A"}
           </p>
-        </div>
 
-        <div className="text-center text-xl text-[#b79b5b]">→</div>
+          {flight.origin_city && (
+            <p className="text-xs text-[#806b59]">{flight.origin_city}</p>
+          )}
 
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-gray-500">To</p>
+          {flight.departure_at && (
+            <p className="mt-1 text-sm font-semibold text-[#3f2415]">
+              {String(flight.departure_at).slice(11, 16)}
+            </p>
+          )}
 
-          <p className="mt-1 font-semibold text-[#24382c]">
-            {flight.destination || "N/A"}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-[#f8f3e7] p-3">
-          <p className="text-xs text-gray-500">Flight</p>
-
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
-            {flight.flight_number || "N/A"}
-          </p>
-        </div>
-
-        <div className="rounded-xl bg-[#f8f3e7] p-3">
-          <p className="text-xs text-gray-500">Stops</p>
-
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
-            {flight.transfers === 0
-              ? "Non-stop"
-              : `${flight.transfers} Stop${flight.transfers > 1 ? "s" : ""}`}
-          </p>
-        </div>
-      </div>
-
-      {flight.departure_at && (
-        <div className="mt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            Departure
-          </p>
-
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
-            {flight.departure_at}
-          </p>
-        </div>
-      )}
-
-      {flight.arrival_at && (
-        <div className="mt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            Arrival
-          </p>
-
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
-            {flight.arrival_at}
-          </p>
-        </div>
-      )}
-
-      {flight.duration && (
-        <div className="mt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            Duration
-          </p>
-
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
-            {flight.duration} minutes
-          </p>
-        </div>
-      )}
-
-      <div className="mt-5 border-t border-[#eee6d4] pt-4">
-        <p className="text-xs uppercase tracking-wide text-gray-500">
-          Flight Price
-        </p>
-
-        <p className="mt-1 text-2xl font-bold text-[#b79b5b]">
-          {formatPrice(flight.price, flight.currency)}
-        </p>
-      </div>
-
-      <div className="mt-4 rounded-xl bg-[#f8f3e7] px-3 py-2">
-        <p className="text-xs text-gray-500">Source</p>
-
-        <p className="text-sm font-semibold text-[#24382c]">
-          FlightAPI
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// HOTEL CARD
-// ==========================================
-
-function HotelCard({ hotel }) {
-  const hotelLocation =
-    typeof hotel.location === "string"
-      ? hotel.location
-      : hotel.location?.name ||
-        hotel.location?.city ||
-        hotel.location?.address ||
-        hotel.address ||
-        "Unknown location";
-  const formatPrice = (price, currency) => {
-    if (price === null || price === undefined) {
-      return "Price unavailable";
-    }
-
-    return `${currency || ""} ${Number(price).toLocaleString()}`;
-  };
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-[#d9c9a5] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <div className="flex h-36 items-center justify-center bg-[#eee6d4] text-6xl">
-        🏨
-      </div>
-
-      <div className="p-5">
-        {hotel.platform && (
-          <p className="text-xs font-medium uppercase tracking-wide text-[#b79b5b]">
-            {hotel.platform}
-          </p>
-        )}
-
-        <h3 className="mt-1 font-serif text-xl font-semibold text-[#24382c]">
-          {hotel.name || "Hotel"}
-        </h3>
-
-        <p className="mt-2 text-sm text-gray-600">
-          📍{" "}
-          {typeof hotel.location === "string"
-            ? hotel.location
-            : hotel.location?.name ||
-              hotel.location?.city ||
-              hotel.location?.address ||
-              hotel.address ||
-              "Unknown location"}
-        </p>
-
-        {(hotel.star_rating ?? hotel.stars) && (
-          <p className="mt-3 text-sm text-gray-600">
-            ⭐ {hotel.star_rating ?? hotel.stars} Star Hotel
-          </p>
-        )}
-
-        {(hotel.guest_rating ?? hotel.rating) && (
-          <div className="mt-2">
-            <span className="rounded-full bg-[#eee6d4] px-3 py-1 text-xs font-semibold text-[#24382c]">
-              ⭐{" "}
-              {typeof (hotel.guest_rating ?? hotel.rating) === "object"
-                ? (hotel.rating?.value ??
-                  hotel.rating?.score ??
-                  hotel.guest_rating)
-                : (hotel.guest_rating ?? hotel.rating)}
-              {hotel.rating_scale ? ` / ${hotel.rating_scale}` : ""}
-            </span>
-
-            {(hotel.review_count ?? hotel.rating_votes) && (
-              <span className="ml-2 text-xs text-gray-500">
-                ({hotel.review_count ?? hotel.rating_votes} reviews)
-              </span>
-            )}
-          </div>
-        )}
-
-        {hotel.address && (
-          <p className="mt-3 text-sm text-gray-500">📍 {hotel.address}</p>
-        )}
-
-        {hotel.amenities && hotel.amenities.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {hotel.amenities.slice(0, 5).map((amenity, index) => (
-              <span
-                key={index}
-                className="rounded-full bg-[#f5f0e4] px-3 py-1 text-xs text-[#35463b]"
-              >
-                {amenity}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-5 border-t border-[#eee6d4] pt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            Hotel Price
-          </p>
-          {(hotel.nightly_price ??
-          hotel.price_per_night ??
-          hotel.price?.price_per_night ??
-          hotel.price?.current) ? (
-            <div>
-              <p className="text-lg font-bold text-green-700">
-                ₹
-                {Number(
-                  hotel.nightly_price ??
-                    hotel.price_per_night ??
-                    hotel.price?.price_per_night ??
-                    hotel.price?.current,
-                ).toLocaleString("en-IN")}
-              </p>
-
-              <p className="text-xs text-gray-500">per night</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm text-gray-500">Price unavailable</p>
-            </div>
+          {flight.departure_at && (
+            <p className="text-xs text-[#8d7a68]">
+              {String(flight.departure_at).slice(0, 10)}
+            </p>
           )}
         </div>
 
-        {hotel.url && (
-          <a
-            href={hotel.url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 block rounded-xl bg-[#24382c] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#354d3d]"
+        {/* =====================================
+            DURATION / STOPS
+        ===================================== */}
+        <div className="text-center">
+          <p className="text-sm font-semibold text-[#806b59]">
+            {flight.duration
+              ? `${Math.floor(Number(flight.duration) / 60)}h ${
+                  Number(flight.duration) % 60
+                }m`
+              : "—"}
+          </p>
+
+          <div className="my-2 flex items-center justify-center gap-2">
+            <span className="h-px w-10 bg-[#d9c3a5]" />
+
+            <span className="text-lg text-[#b4772b]">✈</span>
+
+            <span className="h-px w-10 bg-[#d9c3a5]" />
+          </div>
+
+          <p className="text-xs font-medium text-[#5f4938]">
+            {flight.transfers === 0
+              ? "Direct"
+              : `${flight.transfers || 0} stop${
+                  Number(flight.transfers) > 1 ? "s" : ""
+                }`}
+          </p>
+        </div>
+
+        {/* =====================================
+            TO
+        ===================================== */}
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-[#9a8978]">
+            To
+          </p>
+
+          <p className="mt-1 text-xl font-bold text-[#3f2415]">
+            {flight.destination || "N/A"}
+          </p>
+
+          {flight.destination_city && (
+            <p className="text-xs text-[#806b59]">{flight.destination_city}</p>
+          )}
+
+          {flight.arrival_at && (
+            <p className="mt-1 text-sm font-semibold text-[#3f2415]">
+              {String(flight.arrival_at).slice(11, 16)}
+            </p>
+          )}
+
+          {flight.arrival_at && (
+            <p className="text-xs text-[#8d7a68]">
+              {String(flight.arrival_at).slice(0, 10)}
+            </p>
+          )}
+        </div>
+
+        {/* =====================================
+            PRICE
+        ===================================== */}
+        <div className="lg:border-l lg:border-[#eadbc7] lg:pl-5">
+          <p className="text-xs text-[#9a8978]">Flight Price</p>
+
+          <p className="mt-1 whitespace-nowrap text-2xl font-bold text-[#a66a24]">
+            {formatPrice(flight.price, flight.currency)}
+          </p>
+
+          <p className="text-xs text-[#806b59]">per adult</p>
+        </div>
+
+        {/* =====================================
+            ACTION
+        ===================================== */}
+        <div className="flex flex-row items-center justify-between gap-4 lg:flex-col lg:items-stretch">
+          <button
+            type="button"
+            className="rounded-xl bg-[#7b421b] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5e3014] hover:shadow-md"
           >
-            View Hotel
-          </a>
-        )}
+            Select
+          </button>
+
+          <button
+            type="button"
+            className="whitespace-nowrap text-xs font-semibold text-[#7b421b] transition hover:text-[#b4772b]"
+          >
+            View Details →
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+// ==========================================
+// HOTEL CARD
+// =====
+ function HotelCard({ hotel }) {
+   // ==========================================
+   // SAFE HOTEL DATA
+   // ==========================================
 
+   const hotelName =
+     typeof hotel?.name === "string" && hotel.name.trim()
+       ? hotel.name
+       : "Hotel";
+
+   const hotelImage =
+     typeof hotel?.image === "string" && hotel.image.trim()
+       ? hotel.image
+       : typeof hotel?.image_url === "string" && hotel.image_url.trim()
+         ? hotel.image_url
+         : typeof hotel?.main_photo_url === "string" &&
+             hotel.main_photo_url.trim()
+           ? hotel.main_photo_url
+           : Array.isArray(hotel?.images) && typeof hotel.images[0] === "string"
+             ? hotel.images[0]
+             : Array.isArray(hotel?.photos) &&
+                 typeof hotel.photos[0] === "string"
+               ? hotel.photos[0]
+               : "";
+
+   const hotelLocation =
+     typeof hotel?.location === "string"
+       ? hotel.location
+       : typeof hotel?.city === "string"
+         ? hotel.city
+         : typeof hotel?.address === "string"
+           ? hotel.address
+           : "Dubai";
+
+   const hotelAddress = typeof hotel?.address === "string" ? hotel.address : "";
+
+   // ==========================================
+   // SAFE AMENITIES
+   // ==========================================
+
+   const amenities = Array.isArray(hotel?.amenities)
+     ? hotel.amenities.filter((item) => typeof item === "string" && item.trim())
+     : [];
+
+   // ==========================================
+   // STAR RATING
+   // ==========================================
+
+   const starRating =
+     hotel?.star_rating ?? hotel?.stars ?? hotel?.category ?? "";
+
+   // ==========================================
+   // GUEST RATING
+   // ==========================================
+
+   let guestRating = hotel?.guest_rating ?? hotel?.rating ?? null;
+
+   if (guestRating && typeof guestRating === "object") {
+     guestRating = guestRating.value ?? guestRating.score ?? null;
+   }
+
+   // ==========================================
+   // PRICE
+   // ==========================================
+
+   const nightlyPrice = hotel?.nightly_price ?? hotel?.price_per_night ?? null;
+
+   const totalPrice = hotel?.total_price ?? null;
+
+   const currency =
+     typeof hotel?.currency === "string" ? hotel.currency.toUpperCase() : "EUR";
+
+   // ==========================================
+   // FORMAT PRICE
+   // ==========================================
+
+   function formatPrice(value) {
+     if (value === null || value === undefined || value === "") {
+       return "Price unavailable";
+     }
+
+     const numericValue = Number(value);
+
+     if (!Number.isFinite(numericValue)) {
+       return "Price unavailable";
+     }
+
+     return `${currency} ${numericValue.toLocaleString("en-IN")}`;
+   }
+
+   // ==========================================
+   // RENDER
+   // ==========================================
+
+   return (
+     <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+       {/* ======================================
+          IMAGE
+      ====================================== */}
+
+       <div className="h-48 overflow-hidden bg-[#E8D8C0]">
+         {hotelImage ? (
+           <img
+             src={hotelImage}
+             alt={hotelName}
+             className="h-full w-full object-cover transition duration-500 hover:scale-105"
+             onError={(event) => {
+               console.error("Hotel image failed:", hotelName, hotelImage);
+
+               event.currentTarget.style.display = "none";
+             }}
+           />
+         ) : (
+           <div className="flex h-full flex-col items-center justify-center text-[#4A2C1A]">
+             <span className="text-6xl">🏨</span>
+
+             <span className="mt-2 text-sm">Hotel Image</span>
+           </div>
+         )}
+       </div>
+
+       {/* ======================================
+          HOTEL DETAILS
+      ====================================== */}
+
+       <div className="p-5">
+         {/* SOURCE */}
+
+         <div className="mb-2 flex items-center justify-between">
+           <span className="rounded-full bg-[#F6EFE3] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#C89B3C]">
+             Hotelbeds
+           </span>
+
+           {starRating ? (
+             <span className="text-sm font-semibold text-[#C89B3C]">
+               ⭐ {String(starRating)}
+             </span>
+           ) : null}
+         </div>
+
+         {/* HOTEL NAME */}
+
+         <h3 className="font-serif text-xl font-semibold text-[#4A2C1A]">
+           {hotelName}
+         </h3>
+
+         {/* LOCATION */}
+
+         <p className="mt-2 text-sm text-gray-600">📍 {hotelLocation}</p>
+
+         {/* ADDRESS */}
+
+         {hotelAddress && hotelAddress !== hotelLocation ? (
+           <p className="mt-1 text-xs text-gray-500">{hotelAddress}</p>
+         ) : null}
+
+         {/* GUEST RATING */}
+
+         {guestRating !== null &&
+         guestRating !== undefined &&
+         guestRating !== "" ? (
+           <div className="mt-3">
+             <span className="rounded-full bg-[#E8D8C0] px-3 py-1 text-xs font-semibold text-[#4A2C1A]">
+               ⭐ {String(guestRating)}
+               {hotel?.rating_scale ? ` / ${hotel.rating_scale}` : ""}
+             </span>
+
+             {hotel?.review_count || hotel?.rating_votes ? (
+               <span className="ml-2 text-xs text-gray-500">
+                 ({hotel.review_count ?? hotel.rating_votes} reviews)
+               </span>
+             ) : null}
+           </div>
+         ) : null}
+
+         {/* ====================================
+            AMENITIES
+        ==================================== */}
+
+         {amenities.length > 0 ? (
+           <div className="mt-4 flex flex-wrap gap-2">
+             {amenities.slice(0, 5).map((amenity, index) => (
+               <span
+                 key={`${amenity}-${index}`}
+                 className="rounded-full bg-[#F6EFE3] px-3 py-1 text-xs text-[#5A3A25]"
+               >
+                 {amenity}
+               </span>
+             ))}
+           </div>
+         ) : null}
+
+         {/* ====================================
+            PRICE
+        ==================================== */}
+
+         <div className="mt-5 border-t border-[#E8D8C0] pt-4">
+           <p className="text-xs uppercase tracking-[0.15em] text-gray-500">
+             Hotel Price
+           </p>
+
+           {nightlyPrice !== null && nightlyPrice !== undefined ? (
+             <div className="mt-1">
+               <p className="text-2xl font-bold text-[#4A2C1A]">
+                 {formatPrice(nightlyPrice)}
+               </p>
+
+               <p className="text-xs text-gray-500">per night</p>
+             </div>
+           ) : totalPrice !== null && totalPrice !== undefined ? (
+             <div className="mt-1">
+               <p className="text-2xl font-bold text-[#4A2C1A]">
+                 {formatPrice(totalPrice)}
+               </p>
+
+               <p className="text-xs text-gray-500">total stay</p>
+             </div>
+           ) : (
+             <p className="mt-1 text-sm text-gray-500">Price unavailable</p>
+           )}
+         </div>
+
+         {/* ====================================
+            HOTEL CODE
+        ==================================== */}
+
+         {hotel?.code ? (
+           <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
+             <p className="text-xs text-gray-500">Hotel Code</p>
+
+             <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
+               {String(hotel.code)}
+             </p>
+           </div>
+         ) : null}
+       </div>
+     </div>
+   );
+ }
 // ==========================================
 // RESTAURANT CARD
 // ==========================================
 
 function RestaurantCard({ restaurant }) {
+   const restaurantImage =
+     restaurant.image ||
+     restaurant.image_url ||
+     restaurant.photo ||
+     restaurant.photo_url ||
+     restaurant.properties?.image ||
+     restaurant.properties?.image_url ||
+     "";
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#d9c9a5] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="flex items-center justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eee6d4] text-2xl">
-          🍽️
+        <div className="h-40 w-full overflow-hidden rounded-xl bg-[#E8D8C0]">
+          {restaurantImage ? (
+            <img
+              src={restaurantImage}
+              alt={restaurant.name || "Restaurant"}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-5xl">
+              🍽️
+            </div>
+          )}
         </div>
 
-        <span className="rounded-full bg-[#eee6d4] px-3 py-1 text-xs font-semibold text-[#24382c]">
+        <span className="rounded-full bg-[#E8D8C0] px-3 py-1 text-xs font-semibold text-[#4A2C1A]">
           Restaurant
         </span>
       </div>
 
-      <h3 className="mt-5 text-xl font-bold text-[#24382c]">
+      <h3 className="mt-5 text-xl font-bold text-[#4A2C1A]">
         {restaurant.name ||
           restaurant.poi_name ||
           restaurant.place_name ||
@@ -3196,17 +3441,17 @@ function RestaurantCard({ restaurant }) {
         <div className="mt-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">City</p>
 
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
+          <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
             {restaurant.city}
           </p>
         </div>
       )}
 
       {restaurant.distance !== null && restaurant.distance !== undefined && (
-        <div className="mt-4 rounded-xl bg-[#f8f3e7] p-3">
+        <div className="mt-4 rounded-xl bg-[#FBF7EF] p-3">
           <p className="text-xs text-gray-500">Distance</p>
 
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
+          <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
             {(restaurant.distance / 1000).toFixed(2)} km
           </p>
         </div>
@@ -3216,7 +3461,7 @@ function RestaurantCard({ restaurant }) {
         <div className="mt-4">
           <p className="text-xs uppercase tracking-wide text-gray-500">Phone</p>
 
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
+          <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
             {restaurant.phone}
           </p>
         </div>
@@ -3227,16 +3472,16 @@ function RestaurantCard({ restaurant }) {
           href={restaurant.website}
           target="_blank"
           rel="noreferrer"
-          className="mt-5 block rounded-xl bg-[#24382c] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#354d3d]"
+          className="mt-5 block rounded-xl bg-[#4A2C1A] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#354d3d]"
         >
           Visit Website
         </a>
       )}
 
-      <div className="mt-4 rounded-xl bg-[#f8f3e7] px-3 py-2">
+      <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
         <p className="text-xs text-gray-500">Source</p>
 
-        <p className="text-sm font-semibold text-[#24382c]">Geoapify</p>
+        <p className="text-sm font-semibold text-[#4A2C1A]">Geoapify</p>
       </div>
     </div>
   );
@@ -3248,18 +3493,18 @@ function RestaurantCard({ restaurant }) {
 
 function PlaceCard({ place }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#d9c9a5] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <div className="flex items-center justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eee6d4] text-2xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8D8C0] text-2xl">
           📍
         </div>
 
-        <span className="rounded-full bg-[#eee6d4] px-3 py-1 text-xs font-semibold text-[#24382c]">
+        <span className="rounded-full bg-[#E8D8C0] px-3 py-1 text-xs font-semibold text-[#4A2C1A]">
           Attraction
         </span>
       </div>
 
-      <h3 className="mt-5 text-xl font-bold text-[#24382c]">
+      <h3 className="mt-5 text-xl font-bold text-[#4A2C1A]">
         {place.name || "Tourist Attraction"}
       </h3>
 
@@ -3274,10 +3519,10 @@ function PlaceCard({ place }) {
       )}
 
       {place.category && (
-        <div className="mt-4 rounded-xl bg-[#f8f3e7] p-3">
+        <div className="mt-4 rounded-xl bg-[#FBF7EF] p-3">
           <p className="text-xs text-gray-500">Category</p>
 
-          <p className="mt-1 text-sm font-semibold text-[#24382c]">
+          <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
             {place.category}
           </p>
         </div>
@@ -3285,28 +3530,28 @@ function PlaceCard({ place }) {
 
       {(place.latitude !== undefined || place.longitude !== undefined) && (
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-[#f8f3e7] p-3">
+          <div className="rounded-xl bg-[#FBF7EF] p-3">
             <p className="text-xs text-gray-500">Latitude</p>
 
-            <p className="mt-1 text-sm font-semibold text-[#24382c]">
+            <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
               {place.latitude ?? "N/A"}
             </p>
           </div>
 
-          <div className="rounded-xl bg-[#f8f3e7] p-3">
+          <div className="rounded-xl bg-[#FBF7EF] p-3">
             <p className="text-xs text-gray-500">Longitude</p>
 
-            <p className="mt-1 text-sm font-semibold text-[#24382c]">
+            <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
               {place.longitude ?? "N/A"}
             </p>
           </div>
         </div>
       )}
 
-      <div className="mt-4 rounded-xl bg-[#f8f3e7] px-3 py-2">
+      <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
         <p className="text-xs text-gray-500">Source</p>
 
-        <p className="text-sm font-semibold text-[#24382c]">
+        <p className="text-sm font-semibold text-[#4A2C1A]">
           OpenStreetMap / Overpass
         </p>
       </div>

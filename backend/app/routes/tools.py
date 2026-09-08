@@ -310,7 +310,7 @@ async def flights(
 @router.get("/restaurants")
 async def restaurants(
     city: str,
-    radius: int = 5000,
+    radius: int = 20000,
     limit: int = 10,
 ):
     try:

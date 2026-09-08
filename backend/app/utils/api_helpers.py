@@ -55,15 +55,27 @@ async def safe_get(
                     }
 
                 # Client error
-                if response.status_code >= 400:
-                    return {
-                        "success": False,
-                        "error_type": "http_error",
-                        "status_code": response.status_code,
-                        "message": (
-                            "API request failed."
-                        ),
-                    }
+               # Client error
+            if response.status_code >= 400:
+                try:
+                   error_body = response.json()
+                except Exception:
+                  error_body = response.text
+
+                print("\n========================================")
+                print("EXTERNAL API ERROR")
+                print("========================================")
+                print(f"Status Code : {response.status_code}")
+                print(f"Response    : {error_body}")
+                print("========================================\n")
+
+                return {
+        "success": False,
+        "error_type": "http_error",
+        "status_code": response.status_code,
+        "message": f"API request failed with status {response.status_code}.",
+        "details": error_body,
+    } 
 
                 return {
                     "success": True,

@@ -49,6 +49,10 @@ async def search_restaurants(
             "is_live": False,
         }
 
+    # =====================================================
+    # GEOAPIFY PLACES API
+    # =====================================================
+
     url = "https://api.geoapify.com/v2/places"
 
     params = {
@@ -64,7 +68,8 @@ async def search_restaurants(
         f"Restaurant search: "
         f"lat={latitude}, "
         f"lon={longitude}, "
-        f"radius={radius}m"
+        f"radius={radius}m, "
+        f"limit={limit}"
     )
 
     # =====================================================
@@ -118,14 +123,21 @@ async def search_restaurants(
 
     restaurants = []
 
+    features = data.get(
+        "features",
+        []
+    )
+
+    print(
+        f"Geoapify returned "
+        f"{len(features)} restaurant features"
+    )
+
     # =====================================================
     # PARSE RESTAURANTS
     # =====================================================
 
-    for feature in data.get(
-        "features",
-        []
-    ):
+    for feature in features:
 
         properties = feature.get(
             "properties",
@@ -137,6 +149,97 @@ async def search_restaurants(
             .get("geometry", {})
             .get("coordinates", [])
         )
+
+        # -------------------------------------------------
+        # PLACE ID
+        # -------------------------------------------------
+
+        place_id = properties.get(
+            "place_id"
+        )
+
+        # -------------------------------------------------
+        # RESTAURANT IMAGE
+        # -------------------------------------------------
+
+        restaurant_image = None
+
+        if place_id:
+
+            details_url = (
+                "https://api.geoapify.com/v2/place-details"
+            )
+
+            details_params = {
+                "id": place_id,
+                "lang": "en",
+                "apiKey": api_key,
+            }
+
+            print(
+                f"Checking image for: "
+                f"{properties.get('name', 'Restaurant')}"
+            )
+
+            details_result = await safe_get(
+                url=details_url,
+                params=details_params,
+                timeout=30,
+                retries=1,
+            )
+
+            if details_result.get("success"):
+
+                details_data = details_result.get(
+                    "data",
+                    {}
+                )
+
+                detail_features = (
+                    details_data.get(
+                        "features",
+                        []
+                    )
+                )
+
+                for detail_feature in detail_features:
+
+                    detail_properties = (
+                        detail_feature.get(
+                            "properties",
+                            {}
+                        )
+                    )
+
+                    wiki_media = (
+                        detail_properties.get(
+                            "wiki_and_media",
+                            {}
+                        )
+                    )
+
+                    restaurant_image = (
+                        wiki_media.get(
+                            "image"
+                        )
+                    )
+
+                    if restaurant_image:
+                        print(
+                            f"Image found for: "
+                            f"{properties.get('name', 'Restaurant')}"
+                        )
+                        break
+
+            if not restaurant_image:
+                print(
+                    f"No image found for: "
+                    f"{properties.get('name', 'Restaurant')}"
+                )
+
+        # -------------------------------------------------
+        # ADD RESTAURANT
+        # -------------------------------------------------
 
         restaurants.append(
             {
@@ -187,11 +290,15 @@ async def search_restaurants(
                     {}
                 ).get("phone"),
 
-                "place_id": properties.get(
-                    "place_id"
-                ),
+                "place_id": place_id,
+
+                "image": restaurant_image,
             }
         )
+
+    # =====================================================
+    # FINAL RESULT COUNT
+    # =====================================================
 
     print(
         f"Restaurants found: "
