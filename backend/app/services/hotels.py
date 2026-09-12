@@ -21,26 +21,32 @@ load_dotenv()
 # ============================================================
 
 HOTELBEDS_API_KEY = os.getenv("HOTELBEDS_API_KEY")
-
 HOTELBEDS_SECRET = os.getenv("HOTELBEDS_SECRET")
 
-# mTLS endpoint - used for Hotel Availability
+# Live Hotel Availability / Prices
 HOTELBEDS_BASE_URL = os.getenv(
     "HOTELBEDS_BASE_URL",
     "https://api-mtls.test.hotelbeds.com",
 ).rstrip("/")
 
-# Normal test endpoint - used for Content API
+# Hotelbeds Content API
 HOTELBEDS_CONTENT_URL = os.getenv(
     "HOTELBEDS_CONTENT_URL",
     "https://api.test.hotelbeds.com",
 ).rstrip("/")
 
-HOTELBEDS_CERT_PATH = os.getenv("HOTELBEDS_CERT_PATH")
+# mTLS certificate
+HOTELBEDS_CERT_PATH = os.getenv(
+    "HOTELBEDS_CERT_PATH"
+)
 
-HOTELBEDS_KEY_PATH = os.getenv("HOTELBEDS_KEY_PATH")
+HOTELBEDS_KEY_PATH = os.getenv(
+    "HOTELBEDS_KEY_PATH"
+)
 
-HOTELBEDS_KEY_PASSWORD = os.getenv("HOTELBEDS_KEY_PASSWORD")
+HOTELBEDS_KEY_PASSWORD = os.getenv(
+    "HOTELBEDS_KEY_PASSWORD"
+)
 
 
 # ============================================================
@@ -48,48 +54,35 @@ HOTELBEDS_KEY_PASSWORD = os.getenv("HOTELBEDS_KEY_PASSWORD")
 # ============================================================
 
 if not HOTELBEDS_API_KEY:
-    print("WARNING: HOTELBEDS_API_KEY is missing")
+    print(
+        "WARNING: HOTELBEDS_API_KEY is missing"
+    )
 
 if not HOTELBEDS_SECRET:
-    print("WARNING: HOTELBEDS_SECRET is missing")
+    print(
+        "WARNING: HOTELBEDS_SECRET is missing"
+    )
 
 if not HOTELBEDS_CERT_PATH:
-    print("WARNING: HOTELBEDS_CERT_PATH is missing")
+    print(
+        "WARNING: HOTELBEDS_CERT_PATH is missing"
+    )
 
 if not HOTELBEDS_KEY_PATH:
-    print("WARNING: HOTELBEDS_KEY_PATH is missing")
+    print(
+        "WARNING: HOTELBEDS_KEY_PATH is missing"
+    )
+
+
 
 
 # ============================================================
-# DESTINATION CODE MAPPING
-# ============================================================
-
-DESTINATION_CODES = {
-    "dubai": "DXB",
-    "abu dhabi": "AUH",
-    "maldives": "MLE",
-    "male": "MLE",
-    "singapore": "SIN",
-    "bali": "DPS",
-    "bangkok": "BKK",
-    "paris": "PAR",
-    "london": "LON",
-    "new york": "NYC",
-    "mumbai": "BOM",
-    "chennai": "MAA",
-    "delhi": "DEL",
-    "hyderabad": "HYD",
-    "goa": "GOI",
-}
-
-
-# ============================================================
-# CREATE HOTELBEDS X-SIGNATURE
+# HOTELBEDS X-SIGNATURE
 # ============================================================
 
 def create_signature() -> str:
     """
-    Hotelbeds authentication:
+    Hotelbeds authentication.
 
     SHA256(
         API_KEY + SECRET + current_unix_timestamp
@@ -97,12 +90,18 @@ def create_signature() -> str:
     """
 
     if not HOTELBEDS_API_KEY:
-        raise ValueError("HOTELBEDS_API_KEY is missing")
+        raise ValueError(
+            "HOTELBEDS_API_KEY is missing"
+        )
 
     if not HOTELBEDS_SECRET:
-        raise ValueError("HOTELBEDS_SECRET is missing")
+        raise ValueError(
+            "HOTELBEDS_SECRET is missing"
+        )
 
-    timestamp = str(int(time.time()))
+    timestamp = str(
+        int(time.time())
+    )
 
     raw_string = (
         f"{HOTELBEDS_API_KEY}"
@@ -110,49 +109,204 @@ def create_signature() -> str:
         f"{timestamp}"
     )
 
-    signature = hashlib.sha256(
+    return hashlib.sha256(
         raw_string.encode("utf-8")
     ).hexdigest()
 
-    return signature
-
 
 # ============================================================
-# COMMON HEADERS
+# COMMON HOTELBEDS HEADERS
 # ============================================================
 
-def get_hotelbeds_headers() -> dict:
+def get_hotelbeds_headers() -> dict[str, str]:
     return {
         "Accept": "application/json",
-        "Api-key": HOTELBEDS_API_KEY,
+        "Api-key": HOTELBEDS_API_KEY or "",
         "X-Signature": create_signature(),
     }
 
 
 # ============================================================
-# DESTINATION CODE
+# SAFE FALLBACK DESTINATION CODES
+# ============================================================
+# These are used only when Hotelbeds destination lookup does not
+# return the city. The hotel portfolio is still country-validated
+# before results are returned, so a wrong destination cannot leak
+# unrelated hotels.
+FALLBACK_DESTINATION_CODES = {
+    "paris": "PAR",
+    "dubai": "DXB",
+    "abu dhabi": "AUH",
+    "singapore": "SIN",
+    "bali": "DPS",
+    "denpasar": "DPS",
+    "bangkok": "BKK",
+    "tokyo": "TYO",
+    "kuala lumpur": "KUL",
+    "hong kong": "HKG",
+    "london": "LON",
+    "rome": "ROM",
+    "milan": "MIL",
+    "barcelona": "BCN",
+    "madrid": "MAD",
+    "amsterdam": "AMS",
+    "frankfurt": "FRA",
+    "berlin": "BER",
+    "zurich": "ZRH",
+    "istanbul": "IST",
+    "mumbai": "BOM",
+    "chennai": "MAA",
+    "delhi": "DEL",
+    "new delhi": "DEL",
+    "hyderabad": "HYD",
+    "goa": "GOI",
+    "new york": "NYC",
+    "sydney": "SYD",
+    "melbourne": "MEL",
+    "cape town": "CPT",
+    "johannesburg": "JNB",
+    # Do NOT use MLE as an automatic fallback for "Maldives".
+    # The Hotelbeds test portfolio previously mapped MLE to unrelated
+    # French content, so an invalid destination must return no hotels.
+}
+
+# ============================================================
+# DYNAMIC HOTELBEDS DESTINATION CODE
 # ============================================================
 
-def get_destination_code(location: str) -> str:
+async def get_destination_code(location: str) -> str:
     """
-    Convert city name to Hotelbeds destination code.
+    Resolve a user location to a Hotelbeds destination code.
+
+    Important:
+    - Use validated local fallback codes first for common cities.
+    - Do NOT call the Hotelbeds Destination API repeatedly.
+    - For destinations without a safe city code (for example Maldives),
+      search_hotels() will use the geocoded country code instead.
     """
 
     if not location:
         return ""
 
-    clean_location = location.strip().lower()
+    raw_location = str(location).strip()
+    clean_location = raw_location.lower()
+    city_name = clean_location.split(",")[0].strip()
 
-    # Already a known destination code
-    for city, code in DESTINATION_CODES.items():
-        if clean_location == code.lower():
-            return code
+    if not hasattr(get_destination_code, "_cache"):
+        get_destination_code._cache = {}
 
-    return DESTINATION_CODES.get(clean_location, "")
+    if not hasattr(get_destination_code, "_country_cache"):
+        get_destination_code._country_cache = {}
+
+    cache = get_destination_code._cache
+    country_cache = get_destination_code._country_cache
+
+    if city_name in cache:
+        cached_code = cache[city_name]
+        print(f"Using cached Hotelbeds destination: {city_name} -> {cached_code}")
+        return cached_code
+
+    print()
+    print("==============================================")
+    print("     HOTELBEDS DESTINATION LOOKUP")
+    print("==============================================")
+    print("User location :", raw_location)
+
+    # ------------------------------------------------------------
+    # STEP 1: Resolve country using Open-Meteo.
+    # ------------------------------------------------------------
+    country_code = ""
+
+    try:
+        geocode_url = "https://geocoding-api.open-meteo.com/v1/search"
+        geocode_params = {
+            "name": raw_location,
+            "count": 10,
+            "language": "en",
+            "format": "json",
+        }
+
+        async with httpx.AsyncClient(verify=True, timeout=20) as client:
+            geo_response = await client.get(
+                geocode_url,
+                params=geocode_params,
+            )
+
+        print("Open-Meteo Geocoding Status:", geo_response.status_code)
+
+        if geo_response.status_code == 200:
+            geo_data = geo_response.json()
+            geo_results = geo_data.get("results", [])
+
+            if isinstance(geo_results, list):
+                selected_geo = None
+
+                for result in geo_results:
+                    if not isinstance(result, dict):
+                        continue
+
+                    result_name = str(
+                        result.get("name", "")
+                    ).strip().lower()
+
+                    if result_name == city_name:
+                        selected_geo = result
+                        break
+
+                if selected_geo is None and geo_results:
+                    selected_geo = geo_results[0]
+
+                if isinstance(selected_geo, dict):
+                    country_code = str(
+                        selected_geo.get("country_code", "")
+                    ).strip().upper()
+
+                    print("Geocoded location :", selected_geo.get("name", ""))
+                    print("Country           :", selected_geo.get("country", ""))
+                    print("Country code      :", country_code)
+
+                    country_cache[city_name] = country_code
+
+    except Exception as exc:
+        print("Open-Meteo geocoding error:", str(exc))
+
+    # ------------------------------------------------------------
+    # STEP 2: SAFE CITY FALLBACK FIRST.
+    #
+    # This prevents consuming Hotelbeds Destination API quota for
+    # cities whose destination codes are already validated.
+    # ------------------------------------------------------------
+    fallback_code = FALLBACK_DESTINATION_CODES.get(city_name, "")
+
+    if fallback_code:
+        print(
+            "Using validated Hotelbeds city fallback:",
+            city_name,
+            "->",
+            fallback_code,
+        )
+        cache[city_name] = fallback_code
+        return fallback_code
+
+    # ------------------------------------------------------------
+    # STEP 3: Do NOT scan 10 Hotelbeds destination pages.
+    #
+    # The caller can use country_code to search hotel content when
+    # there is no safe city destination code.
+    # ------------------------------------------------------------
+    print(
+        "No safe city destination code for:",
+        raw_location,
+        "| country:",
+        country_code or "unknown",
+    )
+
+    cache[city_name] = ""
+    return ""
 
 
 # ============================================================
-# SSL / mTLS CLIENT
+# CREATE SSL CONTEXT
 # ============================================================
 
 def create_ssl_context() -> ssl.SSLContext:
@@ -161,26 +315,38 @@ def create_ssl_context() -> ssl.SSLContext:
     """
 
     if not HOTELBEDS_CERT_PATH:
+
         raise ValueError(
             "HOTELBEDS_CERT_PATH is missing in .env"
         )
 
     if not HOTELBEDS_KEY_PATH:
+
         raise ValueError(
             "HOTELBEDS_KEY_PATH is missing in .env"
         )
 
-    if not os.path.exists(HOTELBEDS_CERT_PATH):
+    if not os.path.exists(
+        HOTELBEDS_CERT_PATH
+    ):
+
         raise FileNotFoundError(
-            f"Certificate file not found: {HOTELBEDS_CERT_PATH}"
+            "Certificate file not found: "
+            f"{HOTELBEDS_CERT_PATH}"
         )
 
-    if not os.path.exists(HOTELBEDS_KEY_PATH):
+    if not os.path.exists(
+        HOTELBEDS_KEY_PATH
+    ):
+
         raise FileNotFoundError(
-            f"Private key file not found: {HOTELBEDS_KEY_PATH}"
+            "Private key file not found: "
+            f"{HOTELBEDS_KEY_PATH}"
         )
 
-    ssl_context = ssl.create_default_context()
+    ssl_context = (
+        ssl.create_default_context()
+    )
 
     ssl_context.load_cert_chain(
         certfile=HOTELBEDS_CERT_PATH,
@@ -195,24 +361,45 @@ def create_ssl_context() -> ssl.SSLContext:
 # HOTEL IMAGE URL
 # ============================================================
 
-def build_hotel_image(image_path: str | None) -> str:
+def build_hotel_image(
+    image_path: str | None,
+) -> str:
     """
-    Hotelbeds image path -> full image URL.
+    Convert Hotelbeds image path
+    into a real Hotelbeds image URL.
 
-    Hotelbeds documentation:
-    https://photos.hotelbeds.com/giata/ + image path
+    Example:
+
+        image_path:
+        00/006808/006808a_hb_f_001.jpg
+
+    Result:
+
+        https://photos.hotelbeds.com/giata/
+        00/006808/006808a_hb_f_001.jpg
     """
 
     if not image_path:
         return ""
 
-    image_path = str(image_path).lstrip("/")
+    image_path = (
+        str(image_path)
+        .strip()
+        .lstrip("/")
+    )
+
+    if not image_path:
+        return ""
 
     # Already a complete URL
-    if image_path.startswith("http://"):
+    if image_path.startswith(
+        "http://"
+    ):
         return image_path
 
-    if image_path.startswith("https://"):
+    if image_path.startswith(
+        "https://"
+    ):
         return image_path
 
     return (
@@ -222,22 +409,541 @@ def build_hotel_image(image_path: str | None) -> str:
 
 
 # ============================================================
-# CONTENT API
+# IMAGE TYPE
+# ============================================================
+
+def get_image_type(
+    image: dict[str, Any],
+) -> str:
+    """
+    Hotelbeds image types:
+
+        GEN = General hotel image
+        HAB = Room image
+        RES = Restaurant image
+    """
+
+    # Hotelbeds Content API uses imageTypeCode (e.g. GEN/HAB/RES).
+    # Keep support for the older type/typeCode shapes too.
+    image_type = image.get(
+        "imageTypeCode"
+    )
+
+    if isinstance(image_type, dict):
+        return str(
+            image_type.get("code")
+            or image_type.get("content")
+            or ""
+        ).strip().upper()
+
+    if image_type:
+        return str(image_type).strip().upper()
+
+    image_type = image.get(
+        "type"
+    )
+
+    # Example:
+    #
+    # "type": {
+    #     "code": "GEN"
+    # }
+    #
+
+    if isinstance(
+        image_type,
+        dict,
+    ):
+
+        return str(
+            image_type.get("code")
+            or ""
+        ).upper()
+
+    # Example:
+    #
+    # "type": "GEN"
+    #
+
+    if isinstance(
+        image_type,
+        str,
+    ):
+
+        return image_type.upper()
+
+    # Alternative field
+    return str(
+        image.get("typeCode")
+        or ""
+    ).upper()
+
+
+# ============================================================
+# VISUAL ORDER
+# ============================================================
+
+def get_visual_order(
+    image: dict[str, Any],
+) -> int:
+
+    value = (
+        image.get("visualOrder")
+        or image.get("visual_order")
+        or image.get("order")
+        or 999999
+    )
+
+    try:
+
+        return int(value)
+
+    except Exception:
+
+        return 999999
+
+
+# ============================================================
+# IMAGE PATH
+# ============================================================
+
+def get_image_path(
+    image: dict[str, Any],
+) -> str:
+
+    return str(
+        image.get("path")
+        or image.get("imagePath")
+        or image.get("url")
+        or ""
+    ).strip()
+
+
+# ============================================================
+# COLLECT HOTEL IMAGES
+# ============================================================
+
+def collect_hotel_images(
+    value: Any,
+) -> list[dict[str, Any]]:
+    """
+    Recursively find Hotelbeds image objects.
+
+    Supports normal and nested JSON structures.
+    """
+
+    found: list[
+        dict[str, Any]
+    ] = []
+
+    # --------------------------------------------------------
+    # List
+    # --------------------------------------------------------
+
+    if isinstance(
+        value,
+        list,
+    ):
+
+        for item in value:
+
+            found.extend(
+                collect_hotel_images(
+                    item
+                )
+            )
+
+        return found
+
+    # --------------------------------------------------------
+    # Dictionary
+    # --------------------------------------------------------
+
+    if not isinstance(
+        value,
+        dict,
+    ):
+
+        return found
+
+    # --------------------------------------------------------
+    # Check current object
+    # --------------------------------------------------------
+
+    path = get_image_path(
+        value
+    )
+
+    if path:
+
+        image_type = get_image_type(
+            value
+        )
+
+        # Only hotel / room images
+        if image_type in {
+            "GEN",
+            "HAB",
+        }:
+
+            found.append(
+                {
+                    "type": image_type,
+                    "visual_order": (
+                        get_visual_order(
+                            value
+                        )
+                    ),
+                    "path": path,
+                }
+            )
+
+    # --------------------------------------------------------
+    # Search nested values
+    # --------------------------------------------------------
+
+    for nested_value in (
+        value.values()
+    ):
+
+        if isinstance(
+            nested_value,
+            (
+                dict,
+                list,
+            ),
+        ):
+
+            found.extend(
+                collect_hotel_images(
+                    nested_value
+                )
+            )
+
+    return found
+
+
+# ============================================================
+# CHOOSE HOTEL IMAGE
+# ============================================================
+
+def choose_hotel_image(
+    images: Any,
+) -> str:
+    """
+    Select a real Hotelbeds hotel image.
+
+    Priority:
+
+        1. GEN + visualOrder 0
+        2. GEN
+        3. HAB + visualOrder 0
+        4. HAB
+
+    RES / restaurant images
+    are never selected.
+    """
+
+    candidates = (
+        collect_hotel_images(
+            images
+        )
+    )
+
+    if not candidates:
+
+        print(
+            "Hotelbeds: "
+            "no GEN/HAB image found"
+        )
+
+        return ""
+
+    # --------------------------------------------------------
+    # Remove duplicate paths
+    # --------------------------------------------------------
+
+    unique_images = []
+
+    seen_paths = set()
+
+    for image in candidates:
+
+        path = image.get(
+            "path"
+        )
+
+        if not path:
+            continue
+
+        if path in seen_paths:
+            continue
+
+        seen_paths.add(
+            path
+        )
+
+        unique_images.append(
+            image
+        )
+
+    # --------------------------------------------------------
+    # GENERAL HOTEL IMAGES
+    # --------------------------------------------------------
+
+    general_images = [
+        image
+        for image in unique_images
+        if image.get("type")
+        == "GEN"
+    ]
+
+    if general_images:
+
+        general_images.sort(
+            key=lambda item:
+                item.get(
+                    "visual_order",
+                    999999,
+                )
+        )
+
+        selected = (
+            general_images[0]
+        )
+
+        image_url = (
+            build_hotel_image(
+                selected["path"]
+            )
+        )
+
+        print()
+        print(
+            "=============================================="
+        )
+        print(
+            "       HOTELBEDS HOTEL IMAGE"
+        )
+        print(
+            "=============================================="
+        )
+        print(
+            "Type        :",
+            selected["type"],
+        )
+        print(
+            "VisualOrder :",
+            selected[
+                "visual_order"
+            ],
+        )
+        print(
+            "Image path  :",
+            selected["path"],
+        )
+        print(
+            "Image URL   :",
+            image_url,
+        )
+        print(
+            "=============================================="
+        )
+
+        return image_url
+
+    # --------------------------------------------------------
+    # ROOM IMAGES
+    # --------------------------------------------------------
+
+    room_images = [
+        image
+        for image in unique_images
+        if image.get("type")
+        == "HAB"
+    ]
+
+    if room_images:
+
+        room_images.sort(
+            key=lambda item:
+                item.get(
+                    "visual_order",
+                    999999,
+                )
+        )
+
+        selected = (
+            room_images[0]
+        )
+
+        image_url = (
+            build_hotel_image(
+                selected["path"]
+            )
+        )
+
+        print()
+        print(
+            "=============================================="
+        )
+        print(
+            "       HOTELBEDS ROOM IMAGE"
+        )
+        print(
+            "=============================================="
+        )
+        print(
+            "Type        :",
+            selected["type"],
+        )
+        print(
+            "VisualOrder :",
+            selected[
+                "visual_order"
+            ],
+        )
+        print(
+            "Image path  :",
+            selected["path"],
+        )
+        print(
+            "Image URL   :",
+            image_url,
+        )
+        print(
+            "=============================================="
+        )
+
+        return image_url
+
+    return ""
+
+
+# ============================================================
+# EXTRACT HOTEL LIST
+# ============================================================
+
+def extract_hotels_from_response(
+    data: Any,
+) -> list[dict[str, Any]]:
+    """
+    Hotelbeds can return hotels
+    in different JSON structures.
+
+    Supports:
+
+        {
+            "hotels": {
+                "hotels": [...]
+            }
+        }
+
+    OR:
+
+        {
+            "hotels": [...]
+        }
+
+    OR:
+
+        [...]
+    """
+
+    # --------------------------------------------------------
+    # Direct list
+    # --------------------------------------------------------
+
+    if isinstance(
+        data,
+        list,
+    ):
+
+        return [
+            item
+            for item in data
+            if isinstance(
+                item,
+                dict,
+            )
+        ]
+
+    # --------------------------------------------------------
+    # Must be dictionary
+    # --------------------------------------------------------
+
+    if not isinstance(
+        data,
+        dict,
+    ):
+
+        return []
+
+    hotels = data.get(
+        "hotels"
+    )
+
+    # --------------------------------------------------------
+    # hotels = [...]
+    # --------------------------------------------------------
+
+    if isinstance(
+        hotels,
+        list,
+    ):
+
+        return [
+            item
+            for item in hotels
+            if isinstance(
+                item,
+                dict,
+            )
+        ]
+
+    # --------------------------------------------------------
+    # hotels = {"hotels": [...]}
+    # --------------------------------------------------------
+
+    if isinstance(
+        hotels,
+        dict,
+    ):
+
+        nested = hotels.get(
+            "hotels"
+        )
+
+        if isinstance(
+            nested,
+            list,
+        ):
+
+            return [
+                item
+                for item in nested
+                if isinstance(
+                    item,
+                    dict,
+                )
+            ]
+
+    return []
+
+
+# ============================================================
+# HOTEL CONTENT / PORTFOLIO
 # ============================================================
 
 async def get_hotel_content(
     destination_code: str,
-    limit: int = 20,
+    limit: int = 100,
 ) -> list[dict[str, Any]]:
     """
-    Retrieve static hotel content.
+    Get Hotelbeds hotel portfolio
+    for one destination.
 
-    IMPORTANT:
-    This uses Hotelbeds Content API.
-
-    Endpoint:
-    https://api.test.hotelbeds.com/
-    hotel-content-api/1.0/hotels
+    Uses Hotelbeds Content API.
     """
 
     url = (
@@ -248,28 +954,54 @@ async def get_hotel_content(
     params = {
         "fields": "all",
         "language": "ENG",
+        "destinationCode": destination_code,
         "from": 1,
-        "to": min(limit, 1000),
+        "to": min(
+            limit,
+            1000,
+        ),
         "useSecondaryLanguage": "false",
     }
 
-    headers = get_hotelbeds_headers()
+    headers = (
+        get_hotelbeds_headers()
+    )
 
     print()
-    print("==============================================")
-    print("       HOTELBEDS CONTENT REQUEST")
-    print("==============================================")
-    print("Content URL :", url)
-    print("Destination :", destination_code)
-    print("From        :", params["from"])
-    print("To          :", params["to"])
-    print("==============================================")
+    print(
+        "=============================================="
+    )
+    print(
+        "       HOTELBEDS HOTEL PORTFOLIO"
+    )
+    print(
+        "=============================================="
+    )
+    print(
+        "Portfolio URL :",
+        url,
+    )
+    print(
+        "Destination   :",
+        destination_code,
+    )
+    print(
+        "From          :",
+        params["from"],
+    )
+    print(
+        "To            :",
+        params["to"],
+    )
+    print(
+        "=============================================="
+    )
 
     try:
 
         async with httpx.AsyncClient(
             verify=True,
-            timeout=30,
+            timeout=45,
         ) as client:
 
             response = await client.get(
@@ -279,47 +1011,253 @@ async def get_hotel_content(
             )
 
         print(
-            "Hotelbeds Content Status:",
+            "Hotelbeds Portfolio Status:",
             response.status_code,
         )
 
         if response.status_code != 200:
 
             print()
-            print("==============================================")
-            print("       HOTELBEDS CONTENT ERROR")
-            print("==============================================")
-            print("Status:", response.status_code)
-            print("Response:", response.text)
-            print("==============================================")
+            print(
+                "=============================================="
+            )
+            print(
+                "       HOTELBEDS PORTFOLIO ERROR"
+            )
+            print(
+                "=============================================="
+            )
+            print(
+                "Status   :",
+                response.status_code,
+            )
+            print(
+                "Response :",
+                response.text[:3000],
+            )
+            print(
+                "=============================================="
+            )
 
             return []
 
         data = response.json()
 
-        hotels = data.get("hotels", [])
+        hotels = (
+            extract_hotels_from_response(
+                data
+            )
+        )
 
         print(
-            "Hotelbeds content hotels:",
+            "Hotels received:",
             len(hotels),
         )
 
-        return hotels
+        # ----------------------------------------------------
+        # STRICT DESTINATION FILTER
+        # ----------------------------------------------------
+
+        filtered_hotels = []
+
+        for hotel in hotels:
+
+            api_destination = str(
+                hotel.get(
+                    "destinationCode"
+                )
+                or hotel.get(
+                    "destination_code"
+                )
+                or ""
+            ).upper()
+
+            # If API provides destination,
+            # it MUST match requested destination.
+            if destination_code and api_destination:
+
+             if api_destination != destination_code.upper():
+               continue
+
+            filtered_hotels.append(
+                hotel
+            )
+
+        print(
+            "Destination filtered hotels:",
+            len(
+                filtered_hotels
+            ),
+        )
+
+        # ----------------------------------------------------
+        # DEBUG HOTEL DATA
+        # ----------------------------------------------------
+
+        for hotel in (
+            filtered_hotels[:10]
+        ):
+
+            code = (
+                hotel.get("code")
+                or hotel.get(
+                    "hotelCode"
+                )
+                or ""
+            )
+
+            name = (
+                hotel.get("name")
+                or "Unknown hotel"
+            )
+
+            city = (
+                hotel.get("city")
+                or hotel.get(
+                    "destinationName"
+                )
+                or ""
+            )
+
+            api_destination = (
+                hotel.get(
+                    "destinationCode"
+                )
+                or ""
+            )
+
+            print(
+                "-",
+                code,
+                "|",
+                name,
+                "| destination:",
+                api_destination,
+                "| city:",
+                city,
+            )
+
+        print(
+            "=============================================="
+        )
+
+        return filtered_hotels
 
     except Exception as exc:
 
         print()
-        print("==============================================")
-        print("       HOTELBEDS CONTENT EXCEPTION")
-        print("==============================================")
-        print("Error:", str(exc))
-        print("==============================================")
+        print(
+            "=============================================="
+        )
+        print(
+            "     HOTELBEDS PORTFOLIO EXCEPTION"
+        )
+        print(
+            "=============================================="
+        )
+        print(
+            "Error:",
+            str(exc),
+        )
+        print(
+            "=============================================="
+        )
 
         return []
 
 
+async def get_hotel_content_by_country(
+    country_code: str,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """
+    Get Hotelbeds hotel portfolio by country.
+
+    Used when a reliable city/destination code is not available.
+    This is especially useful for destinations such as Maldives
+    where the test destination catalogue may expose an incorrect
+    city mapping.
+
+    The returned hotels are still filtered by country in search_hotels().
+    """
+
+    if not country_code:
+        return []
+
+    url = (
+        f"{HOTELBEDS_CONTENT_URL}"
+        "/hotel-content-api/1.0/hotels"
+    )
+
+    params = {
+        "fields": "all",
+        "language": "ENG",
+        "countryCode": country_code.upper(),
+        "from": 1,
+        "to": min(max(int(limit), 1), 1000),
+        "useSecondaryLanguage": "false",
+    }
+
+    headers = get_hotelbeds_headers()
+
+    print()
+    print("==============================================")
+    print("   HOTELBEDS COUNTRY HOTEL PORTFOLIO")
+    print("==============================================")
+    print("Country       :", country_code.upper())
+    print("From          :", params["from"])
+    print("To            :", params["to"])
+    print("==============================================")
+
+    try:
+        async with httpx.AsyncClient(
+            verify=True,
+            timeout=45,
+        ) as client:
+            response = await client.get(
+                url,
+                params=params,
+                headers=headers,
+            )
+
+        print("Hotelbeds Country Portfolio Status:", response.status_code)
+
+        if response.status_code != 200:
+            print("Country Portfolio Response:", response.text[:3000])
+            return []
+
+        data = response.json()
+        hotels = extract_hotels_from_response(data)
+
+        print("Country portfolio hotels:", len(hotels))
+
+        # Strict country check.
+        filtered = []
+        for hotel in hotels:
+            hotel_country = str(
+                hotel.get("countryCode")
+                or hotel.get("country_code")
+                or ""
+            ).strip().upper()
+
+            if hotel_country == country_code.upper():
+                filtered.append(hotel)
+
+        print(
+            "Country filtered hotels:",
+            len(filtered),
+            f"(expected={country_code.upper()})",
+        )
+
+        return filtered
+
+    except Exception as exc:
+        print("Country portfolio exception:", str(exc))
+        return []
+
+
 # ============================================================
-# HOTEL AVAILABILITY API
+# LIVE HOTEL AVAILABILITY
 # ============================================================
 
 async def get_hotel_availability(
@@ -330,9 +1268,8 @@ async def get_hotel_availability(
     hotel_codes: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Search real hotel availability and prices.
-
-    Hotelbeds Booking API is the dynamic API.
+    Get LIVE Hotelbeds hotel availability
+    and prices.
     """
 
     url = (
@@ -344,63 +1281,121 @@ async def get_hotel_availability(
         "Accept": "application/json",
         "Accept-Encoding": "gzip",
         "Content-Type": "application/json",
-        "Api-key": HOTELBEDS_API_KEY,
+        "Api-key": HOTELBEDS_API_KEY or "",
         "X-Signature": create_signature(),
     }
 
-    # --------------------------------------------------------
-    # HOTEL CODE FILTER
-    # --------------------------------------------------------
-
-    hotels_object = {}
-
-    if hotel_codes:
-        hotels_object["hotel"] = [
-            str(code)
-            for code in hotel_codes
-            if code
-        ]
-
-    # --------------------------------------------------------
-    # REQUEST PAYLOAD
-    # --------------------------------------------------------
-
     payload = {
+
         "stay": {
+
             "checkIn": check_in,
             "checkOut": check_out,
+
         },
+
         "occupancies": [
+
             {
+
                 "rooms": 1,
-                "adults": max(1, int(adults)),
+
+                "adults": max(
+                    1,
+                    int(adults),
+                ),
+
                 "children": 0,
+
             }
+
         ],
     }
 
-    if hotels_object:
-        payload["hotels"] = hotels_object
+    # ========================================================
+    # HOTEL CODE FILTER
+    # ========================================================
+
+    clean_codes = []
+
+    if hotel_codes:
+
+        for code in hotel_codes:
+
+            if code is None:
+                continue
+
+            code_string = str(
+                code
+            ).strip()
+
+            if (
+                code_string
+                and code_string
+                not in clean_codes
+            ):
+
+                clean_codes.append(
+                    code_string
+                )
+
+    if clean_codes:
+
+        payload["hotels"] = {
+            "hotel": clean_codes
+        }
+
+    # ========================================================
+    # LOG REQUEST
+    # ========================================================
 
     print()
-    print("==============================================")
-    print("       HOTELBEDS AVAILABILITY REQUEST")
-    print("==============================================")
-    print("Availability URL :", url)
-    print("Destination      :", destination_code)
-    print("Check-in         :", check_in)
-    print("Check-out        :", check_out)
-    print("Adults           :", adults)
-    print("Hotel codes      :", hotel_codes)
-    print("==============================================")
+    print(
+        "=============================================="
+    )
+    print(
+        "       HOTELBEDS AVAILABILITY REQUEST"
+    )
+    print(
+        "=============================================="
+    )
+    print(
+        "Availability URL :",
+        url,
+    )
+    print(
+        "Destination      :",
+        destination_code,
+    )
+    print(
+        "Check-in         :",
+        check_in,
+    )
+    print(
+        "Check-out        :",
+        check_out,
+    )
+    print(
+        "Adults           :",
+        adults,
+    )
+    print(
+        "Hotel codes      :",
+        clean_codes,
+    )
+    print(
+        "=============================================="
+    )
 
     try:
 
-        ssl_context = create_ssl_context()
+        ssl_context = (
+            create_ssl_context()
+        )
 
         async with httpx.AsyncClient(
             verify=ssl_context,
-            timeout=45,
+            timeout=60,
         ) as client:
 
             response = await client.post(
@@ -417,41 +1412,101 @@ async def get_hotel_availability(
         if response.status_code != 200:
 
             print()
-            print("==============================================")
-            print("    HOTELBEDS AVAILABILITY ERROR")
-            print("==============================================")
-            print("Status:", response.status_code)
-            print("Response:", response.text)
-            print("==============================================")
+            print(
+                "=============================================="
+            )
+            print(
+                "    HOTELBEDS AVAILABILITY ERROR"
+            )
+            print(
+                "=============================================="
+            )
+            print(
+                "Status:",
+                response.status_code,
+            )
+            print(
+                "Response:",
+                response.text[:5000],
+            )
+            print(
+                "=============================================="
+            )
 
             return []
 
         data = response.json()
 
-        hotels = data.get("hotels", {})
-
-        if isinstance(hotels, dict):
-            hotel_list = hotels.get("hotels", [])
-        elif isinstance(hotels, list):
-            hotel_list = hotels
-        else:
-            hotel_list = []
+        hotel_list = (
+            extract_hotels_from_response(
+                data
+            )
+        )
 
         print(
             "Hotelbeds availability hotels:",
             len(hotel_list),
         )
 
-        return hotel_list
+        # ====================================================
+        # STRICT DESTINATION FILTER
+        # ====================================================
+
+        filtered_hotels = []
+
+        for hotel in hotel_list:
+
+            api_destination = str(
+                hotel.get(
+                    "destinationCode"
+                )
+                or hotel.get(
+                    "destination_code"
+                )
+                or ""
+            ).upper()
+
+            if api_destination:
+
+                if (
+                    api_destination
+                    != destination_code.upper()
+                ):
+
+                    continue
+
+            filtered_hotels.append(
+                hotel
+            )
+
+        print(
+            "Availability destination filtered:",
+            len(
+                filtered_hotels
+            ),
+        )
+
+        return filtered_hotels
 
     except Exception as exc:
 
         print()
-        print("==============================================")
-        print("   HOTELBEDS AVAILABILITY EXCEPTION")
-        print("==============================================")
-        print("Error:", str(exc))
-        print("==============================================")
+        print(
+            "=============================================="
+        )
+        print(
+            "   HOTELBEDS AVAILABILITY EXCEPTION"
+        )
+        print(
+            "=============================================="
+        )
+        print(
+            "Error:",
+            str(exc),
+        )
+        print(
+            "=============================================="
+        )
 
         return []
 
@@ -462,10 +1517,19 @@ async def get_hotel_availability(
 
 def normalize_hotel(
     hotel: dict[str, Any],
-    content_map: dict[str, dict[str, Any]],
+    content_map: dict[
+        str,
+        dict[str, Any]
+    ],
     check_in: str,
     check_out: str,
+    requested_location: str,
+    destination_code: str,
 ) -> dict[str, Any]:
+
+    # ========================================================
+    # HOTEL CODE
+    # ========================================================
 
     hotel_code = str(
         hotel.get("code")
@@ -473,14 +1537,16 @@ def normalize_hotel(
         or ""
     )
 
-    content = content_map.get(
-        hotel_code,
-        {},
+    content = (
+        content_map.get(
+            hotel_code,
+            {},
+        )
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # HOTEL NAME
-    # --------------------------------------------------------
+    # ========================================================
 
     name = (
         hotel.get("name")
@@ -488,21 +1554,25 @@ def normalize_hotel(
         or "Hotel"
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # CATEGORY
-    # --------------------------------------------------------
+    # ========================================================
 
     category = (
         hotel.get("categoryName")
         or hotel.get("category")
-        or content.get("categoryName")
-        or content.get("category")
+        or content.get(
+            "categoryName"
+        )
+        or content.get(
+            "category"
+        )
         or ""
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # ADDRESS
-    # --------------------------------------------------------
+    # ========================================================
 
     address = (
         hotel.get("address")
@@ -510,128 +1580,270 @@ def normalize_hotel(
         or ""
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # CITY
-    # --------------------------------------------------------
+    # ========================================================
 
     city = (
         hotel.get("city")
         or content.get("city")
+        or hotel.get(
+            "destinationName"
+        )
+        or content.get(
+            "destinationName"
+        )
+        or requested_location
         or ""
     )
 
-    # --------------------------------------------------------
+    # ========================================================
+    # DESTINATION CODE
+    # ========================================================
+
+    hotel_destination_code = (
+        hotel.get(
+            "destinationCode"
+        )
+        or content.get(
+            "destinationCode"
+        )
+        or destination_code
+        or ""
+    )
+
+    # ========================================================
+    # DESTINATION NAME
+    # ========================================================
+
+    hotel_destination_name = (
+        hotel.get(
+            "destinationName"
+        )
+        or content.get(
+            "destinationName"
+        )
+        or city
+        or requested_location
+        or ""
+    )
+
+    # ========================================================
     # DESCRIPTION
-    # --------------------------------------------------------
+    # ========================================================
 
     description = (
         hotel.get("description")
-        or content.get("description")
+        or content.get(
+            "description"
+        )
         or ""
     )
 
-    # --------------------------------------------------------
-    # IMAGE
-    # --------------------------------------------------------
+    # ========================================================
+    # HOTEL IMAGE
+    # ========================================================
 
     image = ""
 
+    # --------------------------------------------------------
+    # FIRST: Hotelbeds Content API
+    # --------------------------------------------------------
     content_images = content.get("images") or []
 
-    if isinstance(content_images, list):
+    print()
+    print("==============================================")
+    print("HOTEL IMAGE DEBUG")
+    print("Hotel:", name)
+    print("Hotel code:", hotel_code)
+    print("Images type:", type(content_images))
+    print("Images count:",
+      len(content_images)
+      if isinstance(content_images, list)
+      else "NOT LIST")
+    print("Images data:")
+    print(content_images)
+    print("==============================================")
 
-        for img in content_images:
+    image = choose_hotel_image(content_images)
 
-            if not isinstance(img, dict):
-                continue
+    print("FINAL IMAGE URL:", image)
+   
 
-            image_path = (
-                img.get("path")
-                or img.get("imagePath")
-                or img.get("url")
-            )
+    print()
+    print(
+        "Hotel:",
+        name,
+    )
 
-            if image_path:
-                image = build_hotel_image(
-                    image_path
-                )
-                break
+    print(
+        "Content images:",
+        len(content_images)
+        if isinstance(
+            content_images,
+            list,
+        )
+        else type(
+            content_images
+        ).__name__,
+    )
 
-    # Try availability response images
+    image = choose_hotel_image(
+        content_images
+    )
+
+    # --------------------------------------------------------
+    # SECOND: Availability API images
+    # --------------------------------------------------------
+
     if not image:
 
-        hotel_images = hotel.get("images") or []
+        hotel_images = (
+            hotel.get("images")
+            or []
+        )
 
-        if isinstance(hotel_images, list):
+        print(
+            "Availability images:",
+            len(hotel_images)
+            if isinstance(
+                hotel_images,
+                list,
+            )
+            else type(
+                hotel_images
+            ).__name__,
+        )
 
-            for img in hotel_images:
+        image = choose_hotel_image(
+            hotel_images
+        )
 
-                if isinstance(img, dict):
-
-                    image_path = (
-                        img.get("path")
-                        or img.get("imagePath")
-                        or img.get("url")
-                    )
-
-                    if image_path:
-                        image = build_hotel_image(
-                            image_path
-                        )
-                        break
-
-                elif isinstance(img, str):
-
-                    image = build_hotel_image(img)
-                    break
-
-    # --------------------------------------------------------
+    # ========================================================
     # PRICE
-    # --------------------------------------------------------
+    # ========================================================
 
     total_price = None
+
     nightly_price = None
+
     currency = "EUR"
 
-    rooms = hotel.get("rooms") or []
+    rooms = (
+        hotel.get("rooms")
+        or []
+    )
 
-    if isinstance(rooms, list) and rooms:
+    if (
+        isinstance(
+            rooms,
+            list,
+        )
+        and rooms
+    ):
 
-        first_room = rooms[0]
+        selected_rate = None
 
-        if isinstance(first_room, dict):
+        # ----------------------------------------------------
+        # Find first valid rate
+        # ----------------------------------------------------
 
-            rates = first_room.get("rates") or []
+        for room in rooms:
 
-            if isinstance(rates, list) and rates:
+            if not isinstance(
+                room,
+                dict,
+            ):
+                continue
 
-                first_rate = rates[0]
+            rates = (
+                room.get("rates")
+                or []
+            )
 
-                if isinstance(first_rate, dict):
+            if not isinstance(
+                rates,
+                list,
+            ):
+                continue
 
-                    total_price = (
-                        first_rate.get("net")
-                        or first_rate.get("sellingRate")
-                        or first_rate.get("price")
+            for rate in rates:
+
+                if not isinstance(
+                    rate,
+                    dict,
+                ):
+                    continue
+
+                possible_price = (
+                    rate.get("net")
+                    or rate.get(
+                        "sellingRate"
                     )
-
-                    currency = (
-                        first_rate.get("currency")
-                        or currency
+                    or rate.get(
+                        "price"
                     )
+                )
 
-    # Some responses may expose net directly
+                if (
+                    possible_price
+                    is not None
+                ):
+
+                    selected_rate = rate
+
+                    break
+
+            if selected_rate:
+
+                break
+
+        # ----------------------------------------------------
+        # Get price
+        # ----------------------------------------------------
+
+        if selected_rate:
+
+            total_price = (
+                selected_rate.get(
+                    "net"
+                )
+                or selected_rate.get(
+                    "sellingRate"
+                )
+                or selected_rate.get(
+                    "price"
+                )
+            )
+
+            currency = (
+                selected_rate.get(
+                    "currency"
+                )
+                or currency
+            )
+
+    # --------------------------------------------------------
+    # Direct hotel price fallback
+    # --------------------------------------------------------
+
     if total_price is None:
 
         total_price = (
-            hotel.get("totalPrice")
-            or hotel.get("net")
-            or hotel.get("price")
+            hotel.get(
+                "totalPrice"
+            )
+            or hotel.get(
+                "net"
+            )
+            or hotel.get(
+                "price"
+            )
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # NIGHTS
-    # --------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -647,51 +1859,88 @@ def normalize_hotel(
 
         nights = max(
             1,
-            (end - start).days,
+            (
+                end - start
+            ).days,
         )
 
     except Exception:
 
         nights = 1
 
-    # --------------------------------------------------------
+    # ========================================================
     # NIGHTLY PRICE
-    # --------------------------------------------------------
+    # ========================================================
 
     if total_price is not None:
 
         try:
+
             nightly_price = (
-                float(total_price) / nights
+                float(
+                    total_price
+                )
+                / nights
             )
+
         except Exception:
+
             nightly_price = None
 
-    # --------------------------------------------------------
-    # FINAL OBJECT
-    # --------------------------------------------------------
+    # ========================================================
+    # FINAL HOTEL OBJECT
+    # ========================================================
 
     return {
+
         "hotel_id": hotel_code,
+
         "code": hotel_code,
+
         "name": name,
+
         "category": category,
+
         "city": city,
+
+        "destination_name":
+            hotel_destination_name,
+
+        "destination_code":
+            hotel_destination_code,
+
         "address": address,
+
         "description": description,
+
+        # Real Hotelbeds image
         "image": image,
+
         "image_url": image,
-        "total_price": total_price,
-        "nightly_price": nightly_price,
+
+        # Live price
+        "total_price":
+            total_price,
+
+        "nightly_price":
+            nightly_price,
+
         "currency": currency,
+
         "nights": nights,
+
         "check_in": check_in,
+
         "check_out": check_out,
+
+        "source": "Hotelbeds",
+
+        "is_live": True,
     }
 
 
 # ============================================================
-# MAIN HOTEL SEARCH FUNCTION
+# MAIN HOTEL SEARCH
 # ============================================================
 
 async def search_hotels(
@@ -700,132 +1949,369 @@ async def search_hotels(
     check_out: str,
     adults: int = 1,
     limit: int = 5,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
 
-    destination_code = get_destination_code(location)
+    # ========================================================
+    # GET DESTINATION CODE
+    # ========================================================
+
+    destination_code = (
+    await get_destination_code(
+        location
+    )
+)
 
     print()
-    print("==============================================")
-    print("          HOTELBEDS HOTEL SEARCH")
-    print("==============================================")
-    print("Location    :", location)
-    print("Destination :", destination_code)
-    print("Check-in    :", check_in)
-    print("Check-out   :", check_out)
-    print("Adults      :", adults)
-    print("Limit       :", limit)
-    print("==============================================")
-
-    if not destination_code:
-
-        print(
-            "No Hotelbeds destination code found for:",
-            location,
-        )
-
-        return []
-
-    # --------------------------------------------------------
-    # STEP 1
-    # GET HOTEL CONTENT
-    # --------------------------------------------------------
-
-    content_hotels = await get_hotel_content(
-        destination_code=destination_code,
-        limit=20,
+    print(
+        "=============================================="
+    )
+    print(
+        "          HOTELBEDS HOTEL SEARCH"
+    )
+    print(
+        "=============================================="
+    )
+    print(
+        "Location    :",
+        location,
+    )
+    print(
+        "Destination :",
+        destination_code,
+    )
+    print(
+        "Check-in    :",
+        check_in,
+    )
+    print(
+        "Check-out   :",
+        check_out,
+    )
+    print(
+        "Adults      :",
+        adults,
+    )
+    print(
+        "Limit       :",
+        limit,
+    )
+    print(
+        "=============================================="
     )
 
-    # --------------------------------------------------------
-    # CONTENT MAP
-    # --------------------------------------------------------
+    # ========================================================
+    # MAXIMUM 5
+    # ========================================================
 
-    content_map = {}
+    requested_limit = max(
+        1,
+        min(
+            int(limit),
+            5,
+        ),
+    )
+
+    # ========================================================
+    # STEP 1
+    # HOTEL CONTENT
+    # ========================================================
+
+    expected_country = getattr(
+        get_destination_code,
+        "_country_cache",
+        {},
+    ).get(
+        str(location).strip().lower().split(",")[0].strip(),
+        "",
+    )
+
+    if destination_code:
+        # Normal city search.
+        content_hotels = await get_hotel_content(
+            destination_code=destination_code,
+            limit=20,
+        )
+    elif expected_country:
+        # No reliable city code. Search by country instead.
+        # This avoids the broken MLE -> French portfolio mapping
+        # seen in the Hotelbeds test environment.
+        print(
+            "Using country-level Hotelbeds search:",
+            expected_country,
+        )
+        content_hotels = await get_hotel_content_by_country(
+            country_code=expected_country,
+            limit=20,
+        )
+    else:
+        return {
+            "success": False,
+            "hotels": [],
+            "error_type": "DESTINATION_NOT_SUPPORTED",
+            "message": (
+                "Could not resolve a Hotelbeds destination or country "
+                f"for '{location}'"
+            ),
+            "is_live": False,
+        }
+
+    # --------------------------------------------------------
+    # COUNTRY VALIDATION
+    # --------------------------------------------------------
+    if expected_country:
+        country_filtered = []
+
+        for hotel in content_hotels:
+            hotel_country = str(
+                hotel.get("countryCode")
+                or hotel.get("country_code")
+                or ""
+            ).strip().upper()
+
+            if hotel_country == expected_country:
+                country_filtered.append(hotel)
+
+        print(
+            "Country validated hotels:",
+            len(country_filtered),
+            f"/ {len(content_hotels)}",
+            f"(expected={expected_country})",
+        )
+
+        content_hotels = country_filtered
+
+    if not content_hotels:
+
+        return {
+
+            "success": False,
+
+            "hotels": [],
+
+            "error_type":
+                "NO_DESTINATION_HOTELS",
+
+            "message": (
+                "No Hotelbeds hotels "
+                "found for "
+                f"{location}"
+                + (
+                    f" ({destination_code})"
+                    if destination_code
+                    else ""
+                )
+            ),
+
+            "is_live": True,
+        }
+
+    # ========================================================
+    # STEP 2
+    # CONTENT MAP
+    # ========================================================
+
+    content_map: dict[
+        str,
+        dict[str, Any]
+    ] = {}
 
     for hotel in content_hotels:
 
-        if not isinstance(hotel, dict):
+        if not isinstance(
+            hotel,
+            dict,
+        ):
             continue
 
         code = (
             hotel.get("code")
-            or hotel.get("hotelCode")
+            or hotel.get(
+                "hotelCode"
+            )
         )
 
         if code:
-            content_map[str(code)] = hotel
+
+            content_map[
+                str(code)
+            ] = hotel
 
     print(
-        "Content map hotels:",
+        "Destination content map:",
         len(content_map),
     )
 
-    # --------------------------------------------------------
-    # STEP 2
-    # AVAILABILITY
-    # --------------------------------------------------------
+    # ========================================================
+    # STEP 3
+    # HOTEL CODES
+    # ========================================================
 
     hotel_codes = list(
         content_map.keys()
-    )[:20]
-
-    availability_hotels = await get_hotel_availability(
-        destination_code=destination_code,
-        check_in=check_in,
-        check_out=check_out,
-        adults=adults,
-        hotel_codes=hotel_codes,
     )
-
-    # --------------------------------------------------------
-    # IF AVAILABILITY RETURNS DATA
-    # --------------------------------------------------------
 
     final_hotels = []
 
-    for hotel in availability_hotels:
+    # Hotelbeds allows batch requests.
+    batch_size = 20
 
-        if not isinstance(hotel, dict):
-            continue
+    # ========================================================
+    # CHECK LIVE AVAILABILITY
+    # ========================================================
 
-        normalized = normalize_hotel(
-            hotel=hotel,
-            content_map=content_map,
-            check_in=check_in,
-            check_out=check_out,
-        )
+    for start_index in range(
+        0,
+        len(hotel_codes),
+        batch_size,
+    ):
 
-        final_hotels.append(normalized)
+        if (
+            len(final_hotels)
+            >= requested_limit
+        ):
 
-    # --------------------------------------------------------
-    # FALLBACK
-    # --------------------------------------------------------
-    # If availability returns nothing, use content hotels
-    # so the frontend can still display hotel information.
+            break
 
-    if not final_hotels:
+        batch_codes = hotel_codes[
+            start_index:
+            start_index
+            + batch_size
+        ]
 
+        print()
         print(
-            "No availability results."
-            " Using content hotels as fallback."
+            "Checking availability batch:",
+            start_index,
+            "-",
+            start_index
+            + len(batch_codes),
         )
 
-        for hotel in content_hotels:
+        availability_hotels = (
+            await get_hotel_availability(
 
-            if not isinstance(hotel, dict):
+                destination_code=(
+                    destination_code
+                ),
+
+                check_in=check_in,
+
+                check_out=check_out,
+
+                adults=adults,
+
+                hotel_codes=batch_codes,
+            )
+        )
+
+        # ====================================================
+        # NORMALIZE LIVE RESULTS
+        # ====================================================
+
+        for hotel in (
+            availability_hotels
+        ):
+
+            if not isinstance(
+                hotel,
+                dict,
+            ):
                 continue
 
-            normalized = normalize_hotel(
-                hotel=hotel,
-                content_map=content_map,
-                check_in=check_in,
-                check_out=check_out,
+            # ------------------------------------------------
+            # STRICT DESTINATION CHECK
+            # ------------------------------------------------
+
+            api_destination = str(
+                hotel.get(
+                    "destinationCode"
+                )
+                or hotel.get(
+                    "destination_code"
+                )
+                or ""
+            ).upper()
+
+            if api_destination:
+
+                if (
+                    api_destination
+                    != destination_code.upper()
+                ):
+
+                    print(
+                        "Skipping wrong destination:",
+                        hotel.get(
+                            "name"
+                        ),
+                        api_destination,
+                    )
+
+                    continue
+
+            # ------------------------------------------------
+            # NORMALIZE
+            # ------------------------------------------------
+
+            normalized = (
+                normalize_hotel(
+
+                    hotel=hotel,
+
+                    content_map=(
+                        content_map
+                    ),
+
+                    check_in=check_in,
+
+                    check_out=check_out,
+
+                    requested_location=(
+                        location
+                    ),
+
+                    destination_code=(
+                        destination_code
+                    ),
+                )
             )
 
-            final_hotels.append(normalized)
+            # ------------------------------------------------
+            # ONLY LIVE PRICED HOTELS
+            # ------------------------------------------------
 
-    # --------------------------------------------------------
+            if (
+                normalized.get(
+                    "total_price"
+                )
+                is None
+            ):
+
+                print(
+                    "Skipping hotel "
+                    "without live price:",
+                    normalized.get(
+                        "name"
+                    ),
+                )
+
+                continue
+
+            final_hotels.append(
+                normalized
+            )
+
+            if (
+                len(final_hotels)
+                >= requested_limit
+            ):
+
+                break
+
+    # ========================================================
+    # STEP 4
     # REMOVE DUPLICATES
-    # --------------------------------------------------------
+    # ========================================================
 
     unique_hotels = []
 
@@ -834,30 +2320,53 @@ async def search_hotels(
     for hotel in final_hotels:
 
         code = str(
-            hotel.get("hotel_id")
-            or hotel.get("code")
+            hotel.get(
+                "hotel_id"
+            )
+            or hotel.get(
+                "code"
+            )
             or ""
         )
+
+        if not code:
+            continue
 
         if code in seen_codes:
             continue
 
-        seen_codes.add(code)
+        seen_codes.add(
+            code
+        )
 
-        unique_hotels.append(hotel)
+        unique_hotels.append(
+            hotel
+        )
 
-    # --------------------------------------------------------
-    # MAX 5 HOTELS
-    # --------------------------------------------------------
+    # ========================================================
+    # MAXIMUM 5
+    # ========================================================
 
-    unique_hotels = unique_hotels[
-        :max(1, min(limit, 5))
-    ]
+    unique_hotels = (
+        unique_hotels[
+            :requested_limit
+        ]
+    )
+
+    # ========================================================
+    # FINAL LOG
+    # ========================================================
 
     print()
-    print("==============================================")
-    print("          FINAL HOTEL RESULTS")
-    print("==============================================")
+    print(
+        "=============================================="
+    )
+    print(
+        "          FINAL HOTEL RESULTS"
+    )
+    print(
+        "=============================================="
+    )
     print(
         "Hotels returned:",
         len(unique_hotels),
@@ -868,24 +2377,81 @@ async def search_hotels(
         print(
             "-",
             hotel.get("name"),
-            "|",
+            "| code:",
             hotel.get("code"),
-            "|",
-            hotel.get("image"),
+            "| city:",
+            hotel.get("city"),
+            "| destination:",
+            hotel.get(
+                "destination_code"
+            ),
+            "| price:",
+            hotel.get(
+                "total_price"
+            ),
+            hotel.get(
+                "currency"
+            ),
+            "| image:",
+            bool(
+                hotel.get(
+                    "image"
+                )
+            ),
         )
 
-    print("==============================================")
+    print(
+        "=============================================="
+    )
+
+    # ========================================================
+    # NO LIVE RESULTS
+    # ========================================================
+
+    if not unique_hotels:
+
+        return {
+
+            "success": True,
+
+            "hotels": [],
+
+            "error_type":
+                "NO_LIVE_AVAILABILITY",
+
+            "message": (
+                "No live Hotelbeds "
+                "hotel availability "
+                f"found for {location} "
+                "for the selected dates."
+            ),
+
+            "is_live": True,
+        }
+
+    # ========================================================
+    # SUCCESS
+    # ========================================================
 
     return {
-    "success": True,
-    "hotels": unique_hotels,
-    "error_type": None,
-    "message": "Hotels fetched successfully",
-    "is_live": True,
-}
+
+        "success": True,
+
+        "hotels": unique_hotels,
+
+        "error_type": None,
+
+        "message": (
+            "Live Hotelbeds hotels "
+            f"fetched for {location}"
+        ),
+
+        "is_live": True,
+    }
+
 
 # ============================================================
-# OPTIONAL ALIAS
+# COMPATIBILITY ALIAS
 # ============================================================
 
 async def get_hotels(
@@ -900,9 +2466,14 @@ async def get_hotels(
     """
 
     return await search_hotels(
+
         location=location,
+
         check_in=check_in,
+
         check_out=check_out,
+
         adults=adults,
+
         limit=limit,
     )

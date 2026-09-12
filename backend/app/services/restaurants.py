@@ -7,6 +7,186 @@ load_dotenv()
 
 
 # =====================================================
+# PEXELS IMAGE SEARCH
+# =====================================================
+
+async def get_pexels_restaurant_image(
+    client: httpx.AsyncClient,
+    restaurant_name: str,
+    city: str | None = None,
+):
+    """
+    Get a restaurant-related image from Pexels.
+
+    First tries:
+        restaurant name + city
+
+    Then tries:
+        restaurant name + restaurant
+
+    Then:
+        restaurant food
+    """
+
+    pexels_api_key = os.getenv("PEXELS_API_KEY")
+
+    if not pexels_api_key:
+        print("   Pexels API key not configured.")
+        return None
+
+    headers = {
+        "Authorization": pexels_api_key,
+    }
+
+    # -------------------------------------------------
+    # SEARCH QUERIES
+    # -------------------------------------------------
+
+    queries = []
+
+    if restaurant_name and city:
+        queries.append(
+            f"{restaurant_name} {city} restaurant"
+        )
+
+    if restaurant_name:
+        queries.append(
+            f"{restaurant_name} restaurant"
+        )
+
+    queries.append("restaurant food")
+
+    # Remove duplicate queries
+    queries = list(dict.fromkeys(queries))
+
+    # -------------------------------------------------
+    # TRY EACH QUERY
+    # -------------------------------------------------
+
+    for query in queries:
+
+        print(
+            f"   Pexels image search: {query}"
+        )
+
+        params = {
+            "query": query,
+            "per_page": 5,
+            "orientation": "landscape",
+            "locale": "en-US",
+        }
+
+        try:
+
+            response = await client.get(
+                "https://api.pexels.com/v1/search",
+                params=params,
+                headers=headers,
+            )
+
+            print(
+                "   Pexels status:",
+                response.status_code,
+            )
+
+            # -----------------------------------------
+            # SUCCESS
+            # -----------------------------------------
+
+            if response.status_code == 200:
+
+                data = response.json()
+
+                photos = data.get(
+                    "photos",
+                    [],
+                )
+
+                if photos:
+
+                    # Take first available photo
+                    photo = photos[0]
+
+                    src = photo.get(
+                        "src",
+                        {},
+                    )
+
+                    # Prefer landscape image
+                    image_url = (
+                        src.get("landscape")
+                        or src.get("large")
+                        or src.get("medium")
+                        or src.get("original")
+                    )
+
+                    if image_url:
+
+                        print(
+                            "   Pexels image found."
+                        )
+
+                        return {
+                            "image": image_url,
+                            "photo_url": photo.get(
+                                "url"
+                            ),
+                            "photographer": photo.get(
+                                "photographer"
+                            ),
+                            "photographer_url": photo.get(
+                                "photographer_url"
+                            ),
+                        }
+
+            # -----------------------------------------
+            # AUTH ERROR
+            # -----------------------------------------
+
+            elif response.status_code == 401:
+
+                print(
+                    "   Pexels API key is invalid."
+                )
+
+                return None
+
+            # -----------------------------------------
+            # RATE LIMIT
+            # -----------------------------------------
+
+            elif response.status_code == 429:
+
+                print(
+                    "   Pexels API rate limit exceeded."
+                )
+
+                return None
+
+        except httpx.TimeoutException:
+
+            print(
+                "   Pexels request timed out."
+            )
+
+        except httpx.RequestError as exc:
+
+            print(
+                "   Pexels connection error:",
+                str(exc),
+            )
+
+        except Exception as exc:
+
+            print(
+                "   Pexels image error:",
+                str(exc),
+            )
+
+    return None
+
+
+# =====================================================
 # GEOAPIFY RESTAURANT SEARCH
 # =====================================================
 
@@ -20,19 +200,28 @@ async def search_restaurants(
     Search nearby restaurants using Geoapify.
 
     Maximum 5 restaurants are returned.
-    Restaurant images are fetched using
-    Geoapify Place Details API when available.
+
+    Image priority:
+
+    1. Geoapify image
+    2. Pexels restaurant image
+    3. None
     """
 
-    # =====================================================
-    # API KEY
-    # =====================================================
+    # =================================================
+    # API KEYS
+    # =================================================
 
-    api_key = os.getenv(
+    geoapify_api_key = os.getenv(
         "GEOAPIFY_API_KEY"
     )
 
-    if not api_key:
+    pexels_api_key = os.getenv(
+        "PEXELS_API_KEY"
+    )
+
+    if not geoapify_api_key:
+
         print(
             "ERROR: GEOAPIFY_API_KEY is missing."
         )
@@ -47,13 +236,26 @@ async def search_restaurants(
             "is_live": False,
         }
 
-    # =====================================================
+    if not pexels_api_key:
+
+        print(
+            "WARNING: PEXELS_API_KEY is missing."
+        )
+
+        print(
+            "Restaurant search will work, "
+            "but Pexels images will not be available."
+        )
+
+    # =================================================
     # VALIDATION
-    # =====================================================
+    # =================================================
 
     try:
+
         latitude = float(latitude)
         longitude = float(longitude)
+
     except (TypeError, ValueError):
 
         return {
@@ -78,9 +280,9 @@ async def search_restaurants(
             "is_live": False,
         }
 
-    # -----------------------------------------------------
+    # =================================================
     # FORCE MAXIMUM 5
-    # -----------------------------------------------------
+    # =================================================
 
     limit = min(
         max(int(limit), 1),
@@ -93,7 +295,7 @@ async def search_restaurants(
     )
 
     print(
-        "GEOAPIFY RESTAURANT SEARCH"
+        "GEOAPIFY + PEXELS RESTAURANT SEARCH"
     )
 
     print(
@@ -116,15 +318,16 @@ async def search_restaurants(
         f"Limit     : {limit}"
     )
 
-    # =====================================================
+    # =================================================
     # GEOAPIFY PLACES API
-    # =====================================================
+    # =================================================
 
     places_url = (
         "https://api.geoapify.com/v2/places"
     )
 
     places_params = {
+
         "categories": (
             "catering.restaurant"
         ),
@@ -146,16 +349,16 @@ async def search_restaurants(
 
         "lang": "en",
 
-        "apiKey": api_key,
+        "apiKey": geoapify_api_key,
     }
 
     print(
         "\nCalling Geoapify Places API..."
     )
 
-    # =====================================================
+    # =================================================
     # DIRECT HTTPX REQUEST
-    # =====================================================
+    # =================================================
 
     try:
 
@@ -208,15 +411,18 @@ async def search_restaurants(
             "is_live": False,
         }
 
-    # =====================================================
+    # =================================================
     # HTTP ERROR
-    # =====================================================
+    # =================================================
 
     if response.status_code != 200:
 
         try:
+
             error_data = response.json()
+
         except Exception:
+
             error_data = {}
 
         print(
@@ -284,9 +490,9 @@ async def search_restaurants(
             "is_live": False,
         }
 
-    # =====================================================
+    # =================================================
     # PARSE JSON
-    # =====================================================
+    # =================================================
 
     try:
 
@@ -311,9 +517,9 @@ async def search_restaurants(
             "is_live": False,
         }
 
-    # =====================================================
+    # =================================================
     # FEATURES
-    # =====================================================
+    # =================================================
 
     features = data.get(
         "features",
@@ -324,6 +530,7 @@ async def search_restaurants(
         features,
         list,
     ):
+
         features = []
 
     print(
@@ -331,23 +538,27 @@ async def search_restaurants(
         f"{len(features)} restaurant features."
     )
 
-    # =====================================================
+    # =================================================
     # RESTAURANT LIST
-    # =====================================================
+    # =================================================
 
     restaurants = []
 
     # Only process maximum 5
     features = features[:5]
 
-    # =====================================================
-    # PROCESS EACH RESTAURANT
-    # =====================================================
+    # =================================================
+    # ONE HTTP CLIENT FOR IMAGE REQUESTS
+    # =================================================
 
     async with httpx.AsyncClient(
         timeout=30.0,
         follow_redirects=True,
     ) as client:
+
+        # =================================================
+        # PROCESS EACH RESTAURANT
+        # =================================================
 
         for index, feature in enumerate(
             features,
@@ -416,13 +627,19 @@ async def search_restaurants(
                 )
 
             # -------------------------------------------------
-            # BASIC IMAGE
+            # CITY
             # -------------------------------------------------
+
+            city = properties.get(
+                "city"
+            )
+
+            # =================================================
+            # IMAGE 1: GEOAPIFY
+            # =================================================
 
             restaurant_image = None
 
-            # Some responses can contain
-            # wiki/media information directly.
             wiki_and_media = properties.get(
                 "wiki_and_media",
                 {},
@@ -440,7 +657,7 @@ async def search_restaurants(
                 )
 
             # =================================================
-            # PLACE DETAILS → IMAGE
+            # IMAGE 2: GEOAPIFY PLACE DETAILS
             # =================================================
 
             if (
@@ -454,16 +671,20 @@ async def search_restaurants(
                 )
 
                 details_params = {
+
                     "id": place_id,
+
                     "features": "details",
+
                     "lang": "en",
-                    "apiKey": api_key,
+
+                    "apiKey": geoapify_api_key,
                 }
 
                 print(
                     f"[{index}/"
                     f"{len(features)}] "
-                    f"Checking image: "
+                    f"Checking Geoapify image: "
                     f"{name}"
                 )
 
@@ -502,7 +723,6 @@ async def search_restaurants(
                             list,
                         ):
 
-                            # Find details feature
                             for detail_feature in (
                                 detail_features
                             ):
@@ -513,10 +733,6 @@ async def search_restaurants(
                                         {},
                                     )
                                 )
-
-                                # -------------------------
-                                # WIKI / MEDIA
-                                # -------------------------
 
                                 detail_wiki = (
                                     detail_properties.get(
@@ -537,25 +753,46 @@ async def search_restaurants(
                                     )
 
                                 if restaurant_image:
+
+                                    print(
+                                        "   Geoapify image found."
+                                    )
+
                                     break
-
-                        if restaurant_image:
-
-                            print(
-                                "   Image found."
-                            )
-
-                        else:
-
-                            print(
-                                "   No image found."
-                            )
 
                 except Exception as exc:
 
                     print(
-                        "   Image lookup error:",
+                        "   Geoapify image lookup error:",
                         str(exc),
+                    )
+
+            # =================================================
+            # IMAGE 3: PEXELS FALLBACK
+            # =================================================
+
+            pexels_photo = None
+
+            if not restaurant_image:
+
+                print(
+                    f"   No Geoapify image."
+                )
+
+                pexels_photo = (
+                    await get_pexels_restaurant_image(
+                        client=client,
+                        restaurant_name=name,
+                        city=city,
+                    )
+                )
+
+                if pexels_photo:
+
+                    restaurant_image = (
+                        pexels_photo.get(
+                            "image"
+                        )
                     )
 
             # =================================================
@@ -571,6 +808,7 @@ async def search_restaurants(
                 categories,
                 list,
             ):
+
                 categories = []
 
             # =================================================
@@ -586,99 +824,143 @@ async def search_restaurants(
                 contact,
                 dict,
             ):
+
                 contact = {}
 
             # =================================================
             # RESTAURANT OBJECT
             # =================================================
 
+            restaurant = {
+
+                "id": (
+                    place_id
+                    or f"restaurant-{index}"
+                ),
+
+                "name": name,
+
+                "address": (
+                    properties.get(
+                        "formatted"
+                    )
+                    or properties.get(
+                        "address_line1"
+                    )
+                    or "Address unavailable"
+                ),
+
+                "city": city,
+
+                "country": (
+                    properties.get(
+                        "country"
+                    )
+                ),
+
+                "latitude": (
+                    restaurant_latitude
+                ),
+
+                "longitude": (
+                    restaurant_longitude
+                ),
+
+                "category": categories,
+
+                "distance": (
+                    properties.get(
+                        "distance"
+                    )
+                ),
+
+                "website": (
+                    properties.get(
+                        "website"
+                    )
+                ),
+
+                "phone": (
+                    contact.get(
+                        "phone"
+                    )
+                ),
+
+                "place_id": place_id,
+
+                # -----------------------------------------
+                # IMAGE
+                # -----------------------------------------
+
+                "image": restaurant_image,
+
+                # Frontend fallback fields
+
+                "image_url": restaurant_image,
+
+                "photo": restaurant_image,
+
+                "photo_url": restaurant_image,
+
+                # -----------------------------------------
+                # PEXELS ATTRIBUTION
+                # -----------------------------------------
+
+                "image_source": (
+                    "Geoapify"
+                    if (
+                        restaurant_image
+                        and not pexels_photo
+                    )
+                    else (
+                        "Pexels"
+                        if pexels_photo
+                        else None
+                    )
+                ),
+
+                "pexels_photo_url": (
+                    pexels_photo.get(
+                        "photo_url"
+                    )
+                    if pexels_photo
+                    else None
+                ),
+
+                "pexels_photographer": (
+                    pexels_photo.get(
+                        "photographer"
+                    )
+                    if pexels_photo
+                    else None
+                ),
+
+                "pexels_photographer_url": (
+                    pexels_photo.get(
+                        "photographer_url"
+                    )
+                    if pexels_photo
+                    else None
+                ),
+
+                # -----------------------------------------
+                # RATING
+                # -----------------------------------------
+
+                "rating": (
+                    properties.get(
+                        "rating"
+                    )
+                ),
+            }
+
             restaurants.append(
-                {
-                    "id": (
-                        place_id
-                        or f"restaurant-{index}"
-                    ),
-
-                    "name": name,
-
-                    "address": (
-                        properties.get(
-                            "formatted"
-                        )
-                        or properties.get(
-                            "address_line1"
-                        )
-                        or "Address unavailable"
-                    ),
-
-                    "city": (
-                        properties.get(
-                            "city"
-                        )
-                    ),
-
-                    "country": (
-                        properties.get(
-                            "country"
-                        )
-                    ),
-
-                    "latitude": (
-                        restaurant_latitude
-                    ),
-
-                    "longitude": (
-                        restaurant_longitude
-                    ),
-
-                    "category": categories,
-
-                    "distance": (
-                        properties.get(
-                            "distance"
-                        )
-                    ),
-
-                    "website": (
-                        properties.get(
-                            "website"
-                        )
-                    ),
-
-                    "phone": (
-                        contact.get(
-                            "phone"
-                        )
-                    ),
-
-                    "place_id": place_id,
-
-                    "image": restaurant_image,
-
-                    # Frontend fallback fields
-                    "image_url": (
-                        restaurant_image
-                    ),
-
-                    "photo": (
-                        restaurant_image
-                    ),
-
-                    "photo_url": (
-                        restaurant_image
-                    ),
-
-                    "rating": (
-                        properties.get(
-                            "rating"
-                        )
-                    ),
-                }
+                restaurant
             )
 
-    # =====================================================
+    # =================================================
     # FINAL LIMIT = 5
-    # =====================================================
+    # =================================================
 
     restaurants = restaurants[:5]
 
@@ -709,12 +991,14 @@ async def search_restaurants(
             f"{index}. "
             f"{restaurant['name']} | "
             f"Image: "
-            f"{'YES' if restaurant.get('image') else 'NO'}"
+            f"{'YES' if restaurant.get('image') else 'NO'} | "
+            f"Source: "
+            f"{restaurant.get('image_source') or 'None'}"
         )
 
-    # =====================================================
+    # =================================================
     # NO RESULTS
-    # =====================================================
+    # =================================================
 
     if not restaurants:
 
@@ -729,9 +1013,9 @@ async def search_restaurants(
             "is_live": True,
         }
 
-    # =====================================================
+    # =================================================
     # SUCCESS
-    # =====================================================
+    # =================================================
 
     return {
         "success": True,

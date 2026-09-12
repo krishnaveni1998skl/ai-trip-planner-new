@@ -22,189 +22,133 @@ WIKIMEDIA_API_URL = (
 # ============================================================
 
 async def get_wikimedia_image(
-    client: httpx.AsyncClient,
-    place_name: str,
-    latitude: float,
-    longitude: float,
+    client,
+    place_name,
+    latitude,
+    longitude,
 ):
     """
-    Search Wikimedia Commons for an image related
-    to the exact place name.
+    Find a place-specific image using Wikipedia page images.
 
-    Priority:
-    1. Exact place name
-    2. Place name + Dubai
-    3. Place name only
+    OpenStreetMap remains the main place-data source.
+    This function is only an image fallback and does NOT use Pexels.
 
-    Returns image URL or None.
+    Wikimedia Commons API was returning 403 in the current environment,
+    so we use Wikipedia's public API and page thumbnails instead.
     """
-
     if not place_name:
         return None
 
-    # --------------------------------------------------------
-    # SEARCH QUERIES
-    # --------------------------------------------------------
+    place_name = str(place_name).strip()
+    if not place_name:
+        return None
 
-    search_queries = [
-        f'"{place_name}" Dubai',
-        f'"{place_name}"',
-        place_name,
-    ]
+    place_words = {
+        word.lower().strip('.,()[]{}')
+        for word in place_name.split()
+        if len(word.strip('.,()[]{}')) >= 3
+    }
 
-    for search_text in search_queries:
+    bad_words = (
+        "restaurant",
+        "food",
+        "menu",
+        "dish",
+        "meal",
+        "cuisine",
+    )
+
+    # Try English and French Wikipedia because many Paris attractions
+    # have better coverage on French Wikipedia.
+    for language in ("en", "fr"):
+        api_url = f"https://{language}.wikipedia.org/w/api.php"
 
         params = {
             "action": "query",
-
-            "generator": "search",
-
-            "gsrsearch": search_text,
-
-            "gsrnamespace": 6,
-
-            "gsrlimit": 5,
-
-            "prop": "imageinfo",
-
-            "iiprop": "url",
-
-            "iiurlwidth": 1000,
-
             "format": "json",
-
-            "formatversion": 2,
+            "generator": "search",
+            "gsrsearch": place_name,
+            "gsrnamespace": "0",
+            "gsrlimit": "10",
+            "prop": "pageimages|info",
+            "piprop": "thumbnail|original",
+            "pithumbsize": "1000",
+            "inprop": "url",
+            "redirects": "1",
         }
 
         try:
-
             response = await client.get(
-                WIKIMEDIA_API_URL,
+                api_url,
                 params=params,
+                headers={
+                    "User-Agent": (
+                        "WayToParadise/1.0 "
+                        "(Travel Planner POC; contact@example.com)"
+                    ),
+                    "Accept": "application/json",
+                },
             )
-
-            print(
-                f"Wikimedia search "
-                f"'{search_text}' "
-                f"status: "
-                f"{response.status_code}"
-            )
-
-            if response.status_code != 200:
-                continue
-
+            response.raise_for_status()
             data = response.json()
-
-            pages = data.get(
-                "query",
-                {},
-            ).get(
-                "pages",
-                [],
+        except Exception as exc:
+            print(
+                f"Wikipedia lookup error for {place_name} "
+                f"({language}): {exc}"
             )
+            continue
 
-            if not isinstance(
-                pages,
-                list,
-            ):
+        pages = (data or {}).get("query", {}).get("pages", {})
+        candidates = []
+
+        for page in pages.values():
+            title = str(page.get("title", "")).strip()
+            title_lower = title.lower()
+
+            image_info = page.get("thumbnail") or page.get("original") or {}
+            image_url = image_info.get("source")
+            if not image_url:
                 continue
 
-            # ------------------------------------------------
-            # FIND BEST MATCH
-            # ------------------------------------------------
+            score = 0
+            place_lower = place_name.lower()
 
-            place_words = set(
-                place_name.lower()
-                .replace(",", " ")
-                .split()
+            # Strong match for the actual place name.
+            if place_lower == title_lower:
+                score += 30
+            elif place_lower in title_lower or title_lower in place_lower:
+                score += 20
+
+            # Match important words from the place name.
+            score += sum(
+                3 for word in place_words
+                if word in title_lower
             )
 
-            best_url = None
-            best_score = -1
+            # Avoid clearly unrelated image pages.
+            if any(word in title_lower for word in bad_words):
+                score -= 20
 
-            for page in pages:
+            candidates.append((score, title, image_url))
 
-                title = str(
-                    page.get(
-                        "title",
-                        "",
-                    )
-                ).lower()
+        if candidates:
+            candidates.sort(
+                key=lambda item: item[0],
+                reverse=True,
+            )
 
-                imageinfo = page.get(
-                    "imageinfo",
-                    [],
-                )
+            best_score, best_title, best_url = candidates[0]
 
-                if not imageinfo:
-                    continue
-
-                image_data = imageinfo[0]
-
-                image_url = (
-                    image_data.get(
-                        "thumburl"
-                    )
-                    or image_data.get(
-                        "url"
-                    )
-                )
-
-                if not image_url:
-                    continue
-
-                # --------------------------------------------
-                # MATCH SCORE
-                # --------------------------------------------
-
-                score = 0
-
-                for word in place_words:
-
-                    if len(word) >= 3:
-                        if word in title:
-                            score += 2
-
-                # Exact full name
-                clean_name = (
-                    place_name
-                    .lower()
-                    .strip()
-                )
-
-                if clean_name in title:
-                    score += 10
-
-                # Dubai relevance
-                if "dubai" in title:
-                    score += 3
-
-                if score > best_score:
-
-                    best_score = score
-                    best_url = image_url
-
-            # ------------------------------------------------
-            # ACCEPT ONLY REASONABLE MATCH
-            # ------------------------------------------------
-
-            if best_url and best_score >= 2:
-
+            # Require a meaningful title match. This prevents random
+            # nearby Wikipedia images from appearing on the card.
+            if best_score >= 8:
                 print(
-                    f"Wikimedia image found for: "
-                    f"{place_name}"
+                    f"Wikipedia place image found for: "
+                    f"{place_name} -> {best_title}"
                 )
-
                 return best_url
 
-        except Exception as exc:
-
-            print(
-                f"Wikimedia lookup error "
-                f"for {place_name}: "
-                f"{exc}"
-            )
-
+    print(f"No suitable Wikipedia image found for: {place_name}")
     return None
 
 

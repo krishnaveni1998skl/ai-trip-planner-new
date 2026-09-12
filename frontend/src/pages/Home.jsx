@@ -427,15 +427,13 @@ function Home() {
         <div className="absolute inset-0 bg-[#F6EFE3]/65" />
 
         <div className="relative mx-auto max-w-4xl text-center">
-          <span className="font-serif text-5xl text-[#A66A35]">“</span>
+          
 
           <blockquote className="font-serif text-2xl italic leading-relaxed text-[#4A2713] sm:text-4xl">
-            Travel far enough, you meet yourself.
+           "Travel far enough, you meet yourself."
           </blockquote>
 
-          <p className="mt-5 text-sm font-medium text-[#6B4226]">
-            — David Mitchell
-          </p>
+          
         </div>
       </section>
 

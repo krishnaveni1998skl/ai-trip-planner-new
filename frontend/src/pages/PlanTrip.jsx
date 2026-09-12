@@ -834,6 +834,16 @@ function PlanTrip() {
           ).toLocaleString()} for ${finalTravelers} traveler${
             finalTravelers === "1" ? "" : "s"
           }.\n\n` + `What is your travel start date?`;
+      } else if (finalInterests.length === 0) {
+        reply =
+          `Great! Your travel dates are ${finalStartDate} to ${finalEndDate}.\n\n` +
+          `❤️ What are your travel interests?\n\n` +
+          `For example: Food, Culture, Shopping, Beach, Nature, Adventure or Nightlife.`;
+      } else if (!finalTravelStyle) {
+        reply =
+          `Nice! I have noted your interests: ${finalInterests.join(", ")}.\n\n` +
+          `✈️ What travel style do you prefer?\n\n` +
+          `For example: Luxury, Relaxed, Adventure, Budget, Romantic, Family, Solo or Cultural.`;
       } else {
         reply =
           `Excellent! Your ${finalDestination} trip is ready.\n\n` +
@@ -842,10 +852,11 @@ function PlanTrip() {
           `👥 Travelers: ${finalTravelers}\n` +
           `💰 Budget: ₹${Number(finalBudget).toLocaleString()}\n` +
           `🗓️ Start Date: ${finalStartDate}\n` +
-          `🗓️ End Date: ${finalEndDate}\n\n` +
-          `You can now explore your itinerary, places, hotels, map and budget.`;
+          `🗓️ End Date: ${finalEndDate}\n` +
+          `❤️ Interests: ${finalInterests.join(", ")}\n` +
+          `✈️ Travel Style: ${finalTravelStyle}\n\n` +
+          `You can now explore your personalized itinerary, places, hotels, restaurants, weather, map and budget.`;
       }
-
       // ========================================
       // ADD AI MESSAGE
       // ========================================
@@ -867,18 +878,31 @@ function PlanTrip() {
   // ==========================================
 
   useEffect(() => {
-    if (tripData.destination && tripData.startDate && tripData.endDate) {
-      loadHotels(
-        tripData.destination,
-        tripData.startDate,
-        tripData.endDate,
-        tripData.travelers || 1,
-      );
+    if (tripData.destination && tripData.startDate && tripData.duration) {
+      const start = new Date(`${tripData.startDate}T00:00:00`);
+
+      if (!Number.isNaN(start.getTime())) {
+        const hotelCheckOut = new Date(start);
+
+        // Hotel stay:
+        // 5-day trip = 5 nights
+        // Check-in Nov 5 -> Check-out Nov 10
+        hotelCheckOut.setDate(start.getDate() + Number(tripData.duration));
+
+        const hotelCheckOutDate = hotelCheckOut.toISOString().split("T")[0];
+
+        loadHotels(
+          tripData.destination,
+          tripData.startDate,
+          hotelCheckOutDate,
+          tripData.travelers || 1,
+        );
+      }
     }
   }, [
-    tripData.destination,
+  tripData.destination,
     tripData.startDate,
-    tripData.endDate,
+    tripData.duration,
     tripData.travelers,
   ]);
 
@@ -939,7 +963,7 @@ function PlanTrip() {
         check_in: checkIn,
         check_out: checkOut,
         adults: String(adults),
-        limit: "10",
+        limit: "5",
       });
 
       const response = await fetch(
@@ -1106,9 +1130,8 @@ function PlanTrip() {
     singapore: "SIN",
     tokyo: "NRT",
     bali: "DPS",
-    maldives: "MLE",
-    male: "MLE",
-    "new york": "JFK",
+  
+    newyork: "JFK",
     toronto: "YYZ",
     zurich: "ZRH",
     rome: "FCO",
@@ -3141,15 +3164,20 @@ function FlightCard({ flight }) {
 // ==========================================
 // HOTEL CARD
 // =====
- function HotelCard({ hotel }) {
+ function HotelCard({ hotel, destination }) {
    // ==========================================
-   // SAFE HOTEL DATA
+   // HOTEL NAME
    // ==========================================
 
    const hotelName =
      typeof hotel?.name === "string" && hotel.name.trim()
        ? hotel.name
        : "Hotel";
+
+   // ==========================================
+   // HOTEL IMAGE
+   // Hotel image ONLY
+   // ==========================================
 
    const hotelImage =
      typeof hotel?.image === "string" && hotel.image.trim()
@@ -3159,31 +3187,47 @@ function FlightCard({ flight }) {
          : typeof hotel?.main_photo_url === "string" &&
              hotel.main_photo_url.trim()
            ? hotel.main_photo_url
-           : Array.isArray(hotel?.images) && typeof hotel.images[0] === "string"
+           : Array.isArray(hotel?.images) &&
+               typeof hotel.images[0] === "string" &&
+               hotel.images[0].trim()
              ? hotel.images[0]
              : Array.isArray(hotel?.photos) &&
-                 typeof hotel.photos[0] === "string"
+                 typeof hotel.photos[0] === "string" &&
+                 hotel.photos[0].trim()
                ? hotel.photos[0]
                : "";
 
+   // ==========================================
+   // DESTINATION / LOCATION
+   // ==========================================
+
+   const backendDestination =
+     typeof hotel?.destination_name === "string" &&
+     hotel.destination_name.trim()
+       ? hotel.destination_name
+       : typeof hotel?.destinationName === "string" &&
+           hotel.destinationName.trim()
+         ? hotel.destinationName
+         : typeof hotel?.city === "string" && hotel.city.trim()
+           ? hotel.city
+           : typeof hotel?.location === "string" && hotel.location.trim()
+             ? hotel.location
+             : "";
+
    const hotelLocation =
-     typeof hotel?.location === "string"
-       ? hotel.location
-       : typeof hotel?.city === "string"
-         ? hotel.city
-         : typeof hotel?.address === "string"
-           ? hotel.address
-           : "Dubai";
-
-   const hotelAddress = typeof hotel?.address === "string" ? hotel.address : "";
+     backendDestination ||
+     (typeof destination === "string" && destination.trim()
+       ? destination
+       : "Destination unavailable");
 
    // ==========================================
-   // SAFE AMENITIES
+   // ADDRESS
    // ==========================================
 
-   const amenities = Array.isArray(hotel?.amenities)
-     ? hotel.amenities.filter((item) => typeof item === "string" && item.trim())
-     : [];
+   const hotelAddress =
+     typeof hotel?.address === "string" && hotel.address.trim()
+       ? hotel.address
+       : "";
 
    // ==========================================
    // STAR RATING
@@ -3206,12 +3250,24 @@ function FlightCard({ flight }) {
    // PRICE
    // ==========================================
 
-   const nightlyPrice = hotel?.nightly_price ?? hotel?.price_per_night ?? null;
+   const nightlyPrice =
+     hotel?.nightly_price ??
+     hotel?.nightlyPrice ??
+     hotel?.price_per_night ??
+     hotel?.pricePerNight ??
+     null;
 
-   const totalPrice = hotel?.total_price ?? null;
+   const totalPrice =
+     hotel?.total_price ??
+     hotel?.totalPrice ??
+     hotel?.price_total ??
+     hotel?.total ??
+     null;
 
    const currency =
-     typeof hotel?.currency === "string" ? hotel.currency.toUpperCase() : "EUR";
+     typeof hotel?.currency === "string" && hotel.currency.trim()
+       ? hotel.currency.toUpperCase()
+       : "EUR";
 
    // ==========================================
    // FORMAT PRICE
@@ -3228,7 +3284,10 @@ function FlightCard({ flight }) {
        return "Price unavailable";
      }
 
-     return `${currency} ${numericValue.toLocaleString("en-IN")}`;
+     return `${currency} ${numericValue.toLocaleString("en-IN", {
+       minimumFractionDigits: 2,
+       maximumFractionDigits: 2,
+     })}`;
    }
 
    // ==========================================
@@ -3238,10 +3297,10 @@ function FlightCard({ flight }) {
    return (
      <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
        {/* ======================================
-          IMAGE
-      ====================================== */}
+          HOTEL IMAGE
+          ====================================== */}
 
-       <div className="h-48 overflow-hidden bg-[#E8D8C0]">
+       <div className="h-52 overflow-hidden bg-[#E8D8C0]">
          {hotelImage ? (
            <img
              src={hotelImage}
@@ -3254,29 +3313,28 @@ function FlightCard({ flight }) {
              }}
            />
          ) : (
-           <div className="flex h-full flex-col items-center justify-center text-[#4A2C1A]">
-             <span className="text-6xl">🏨</span>
-
-             <span className="mt-2 text-sm">Hotel Image</span>
+           <div className="flex h-full flex-col items-center justify-center bg-[#F6EFE3] text-[#4A2C1A]">
+             <span className="text-5xl">🏨</span>
+             <span className="mt-2 text-sm">Hotel image unavailable</span>
            </div>
          )}
        </div>
 
        {/* ======================================
           HOTEL DETAILS
-      ====================================== */}
+          ====================================== */}
 
        <div className="p-5">
-         {/* SOURCE */}
+         {/* SOURCE + STARS */}
 
-         <div className="mb-2 flex items-center justify-between">
+         <div className="mb-3 flex items-center justify-between">
            <span className="rounded-full bg-[#F6EFE3] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#C89B3C]">
              Hotelbeds
            </span>
 
            {starRating ? (
              <span className="text-sm font-semibold text-[#C89B3C]">
-               ⭐ {String(starRating)}
+               ⭐ {String(starRating)} STARS
              </span>
            ) : null}
          </div>
@@ -3287,14 +3345,25 @@ function FlightCard({ flight }) {
            {hotelName}
          </h3>
 
-         {/* LOCATION */}
+         {/* DESTINATION */}
 
-         <p className="mt-2 text-sm text-gray-600">📍 {hotelLocation}</p>
+         <p className="mt-2 text-sm font-medium text-gray-600">
+           📍 {hotelLocation}
+         </p>
 
          {/* ADDRESS */}
 
-         {hotelAddress && hotelAddress !== hotelLocation ? (
+         {hotelAddress &&
+         hotelAddress.toLowerCase() !== hotelLocation.toLowerCase() ? (
            <p className="mt-1 text-xs text-gray-500">{hotelAddress}</p>
+         ) : null}
+
+         {/* DESTINATION CODE */}
+
+         {hotel?.destination_code || hotel?.destinationCode ? (
+           <p className="mt-1 text-xs text-gray-400">
+             Destination: {hotel.destination_code ?? hotel.destinationCode}
+           </p>
          ) : null}
 
          {/* GUEST RATING */}
@@ -3317,25 +3386,8 @@ function FlightCard({ flight }) {
          ) : null}
 
          {/* ====================================
-            AMENITIES
-        ==================================== */}
-
-         {amenities.length > 0 ? (
-           <div className="mt-4 flex flex-wrap gap-2">
-             {amenities.slice(0, 5).map((amenity, index) => (
-               <span
-                 key={`${amenity}-${index}`}
-                 className="rounded-full bg-[#F6EFE3] px-3 py-1 text-xs text-[#5A3A25]"
-               >
-                 {amenity}
-               </span>
-             ))}
-           </div>
-         ) : null}
-
-         {/* ====================================
-            PRICE
-        ==================================== */}
+            LIVE HOTEL PRICE
+            ==================================== */}
 
          <div className="mt-5 border-t border-[#E8D8C0] pt-4">
            <p className="text-xs uppercase tracking-[0.15em] text-gray-500">
@@ -3363,16 +3415,14 @@ function FlightCard({ flight }) {
            )}
          </div>
 
-         {/* ====================================
-            HOTEL CODE
-        ==================================== */}
+         {/* HOTEL CODE */}
 
-         {hotel?.code ? (
+         {hotel?.code || hotel?.hotel_id ? (
            <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
              <p className="text-xs text-gray-500">Hotel Code</p>
 
-             <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
-               {String(hotel.code)}
+             <p className="text-sm font-semibold text-[#4A2C1A]">
+               {hotel.code ?? hotel.hotel_id}
              </p>
            </div>
          ) : null}
@@ -3491,81 +3541,135 @@ function RestaurantCard({ restaurant }) {
 // PLACE CARD
 // ==========================================
 
-function PlaceCard({ place }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <div className="flex items-center justify-between">
-        {place.image && (
-          <div className="mb-4 h-48 w-full overflow-hidden rounded-xl">
-            <img
-              src={place.image}
-              alt={place.name || "Place"}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          </div>
-        )}
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8D8C0] text-2xl">
-          📍
-        </div>
+// ==========================================
+// PLACE CARD
+// ==========================================
 
+function PlaceCard({ place }) {
+  const placeImage =
+    place?.image ||
+    place?.image_url ||
+    place?.photo ||
+    place?.photo_url ||
+    "";
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#D8B98A] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+
+      {/* =====================================
+          ATTRACTION BADGE
+      ===================================== */}
+
+      <div className="flex justify-end px-5 pt-5">
         <span className="rounded-full bg-[#E8D8C0] px-3 py-1 text-xs font-semibold text-[#4A2C1A]">
           Attraction
         </span>
       </div>
 
-      <h3 className="mt-5 text-xl font-bold text-[#4A2C1A]">
-        {place.name || "Tourist Attraction"}
-      </h3>
+      {/* =====================================
+          ATTRACTION IMAGE
+      ===================================== */}
 
-      {place.address && (
-        <div className="mt-4">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            Address
-          </p>
-
-          <p className="mt-1 text-sm text-gray-700">{place.address}</p>
+      {placeImage && (
+        <div className="mx-5 mt-4 h-52 overflow-hidden rounded-xl bg-[#E8D8C0]">
+          <img
+            src={placeImage}
+            alt={place.name || "Tourist attraction"}
+            className="h-full w-full object-cover transition duration-500 hover:scale-105"
+            onError={(event) => {
+              event.currentTarget.parentElement.style.display = "none";
+            }}
+          />
         </div>
       )}
 
-      {place.category && (
-        <div className="mt-4 rounded-xl bg-[#FBF7EF] p-3">
-          <p className="text-xs text-gray-500">Category</p>
+      {/* =====================================
+          PLACE NAME
+      ===================================== */}
 
-          <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
-            {place.category}
-          </p>
-        </div>
-      )}
+      <div className="p-5">
 
-      {(place.latitude !== undefined || place.longitude !== undefined) && (
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-[#FBF7EF] p-3">
-            <p className="text-xs text-gray-500">Latitude</p>
+        <h3 className="text-xl font-bold text-[#4A2C1A]">
+          {place.name || "Tourist Attraction"}
+        </h3>
 
-            <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
-              {place.latitude ?? "N/A"}
+        {/* =================================
+            ADDRESS
+        ================================= */}
+
+        {place.address && (
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              Address
+            </p>
+
+            <p className="mt-1 text-sm text-gray-700">
+              {place.address}
             </p>
           </div>
+        )}
 
-          <div className="rounded-xl bg-[#FBF7EF] p-3">
-            <p className="text-xs text-gray-500">Longitude</p>
+        {/* =================================
+            CATEGORY
+        ================================= */}
+
+        {place.category && (
+          <div className="mt-4 rounded-xl bg-[#FBF7EF] p-3">
+            <p className="text-xs text-gray-500">
+              Category
+            </p>
 
             <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
-              {place.longitude ?? "N/A"}
+              {place.category}
             </p>
           </div>
+        )}
+
+        {/* =================================
+            LATITUDE / LONGITUDE
+        ================================= */}
+
+        {(place.latitude !== undefined ||
+          place.longitude !== undefined) && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+
+            <div className="rounded-xl bg-[#FBF7EF] p-3">
+              <p className="text-xs text-gray-500">
+                Latitude
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
+                {place.latitude ?? "N/A"}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-[#FBF7EF] p-3">
+              <p className="text-xs text-gray-500">
+                Longitude
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-[#4A2C1A]">
+                {place.longitude ?? "N/A"}
+              </p>
+            </div>
+
+          </div>
+        )}
+
+        {/* =================================
+            SOURCE
+        ================================= */}
+
+        <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
+          <p className="text-xs text-gray-500">
+            Source
+          </p>
+
+          <p className="text-sm font-semibold text-[#4A2C1A]">
+            OpenStreetMap / Overpass
+          </p>
         </div>
-      )}
 
-      <div className="mt-4 rounded-xl bg-[#FBF7EF] px-3 py-2">
-        <p className="text-xs text-gray-500">Source</p>
-
-        <p className="text-sm font-semibold text-[#4A2C1A]">
-          OpenStreetMap / Overpass
-        </p>
       </div>
     </div>
   );
