@@ -1,12 +1,23 @@
 import httpx
 
 
+# Ambiguous region/state names → safe city used for live API searches
+LOCATION_OVERRIDES = {
+    "kerala": "Kochi, India",
+}
+
+
 async def get_coordinates(city: str):
     url = "https://geocoding-api.open-meteo.com/v1/search"
 
+    search_name = LOCATION_OVERRIDES.get(
+        city.strip().lower(),
+        city.strip(),
+    )
+
     params = {
-        "name": city,
-        "count": 1,
+        "name": search_name,
+        "count": 5,
         "language": "en",
         "format": "json",
     }
@@ -27,11 +38,23 @@ async def get_coordinates(city: str):
             if not results:
                 return None
 
+            # Prefer India when searching an overridden location
             location = results[0]
+
+            if city.strip().lower() == "kerala":
+                india_results = [
+                    result
+                    for result in results
+                    if result.get("country_code", "").upper() == "IN"
+                ]
+
+                if india_results:
+                    location = india_results[0]
 
             return {
                 "name": location.get("name"),
                 "country": location.get("country"),
+                "country_code": location.get("country_code"),
                 "latitude": location.get("latitude"),
                 "longitude": location.get("longitude"),
                 "timezone": location.get("timezone"),

@@ -5,20 +5,18 @@ import httpx
 
 
 # ============================================================
-# API URLS
+# OVERPASS API SERVERS
 # ============================================================
 
-OVERPASS_URL = (
-    "https://overpass-api.de/api/interpreter"
-)
-
-WIKIMEDIA_API_URL = (
-    "https://commons.wikimedia.org/w/api.php"
-)
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+]
 
 
 # ============================================================
-# GET WIKIMEDIA IMAGE
+# GET WIKIPEDIA IMAGE
 # ============================================================
 
 async def get_wikimedia_image(
@@ -31,22 +29,21 @@ async def get_wikimedia_image(
     Find a place-specific image using Wikipedia page images.
 
     OpenStreetMap remains the main place-data source.
-    This function is only an image fallback and does NOT use Pexels.
-
-    Wikimedia Commons API was returning 403 in the current environment,
-    so we use Wikipedia's public API and page thumbnails instead.
+    Wikipedia is used only as an image fallback.
     """
+
     if not place_name:
         return None
 
     place_name = str(place_name).strip()
+
     if not place_name:
         return None
 
     place_words = {
-        word.lower().strip('.,()[]{}')
+        word.lower().strip(".,()[]{}")
         for word in place_name.split()
-        if len(word.strip('.,()[]{}')) >= 3
+        if len(word.strip(".,()[]{}")) >= 3
     }
 
     bad_words = (
@@ -58,10 +55,12 @@ async def get_wikimedia_image(
         "cuisine",
     )
 
-    # Try English and French Wikipedia because many Paris attractions
-    # have better coverage on French Wikipedia.
+    # Try English and French Wikipedia.
     for language in ("en", "fr"):
-        api_url = f"https://{language}.wikipedia.org/w/api.php"
+
+        api_url = (
+            f"https://{language}.wikipedia.org/w/api.php"
+        )
 
         params = {
             "action": "query",
@@ -78,77 +77,126 @@ async def get_wikimedia_image(
         }
 
         try:
+
             response = await client.get(
                 api_url,
                 params=params,
                 headers={
                     "User-Agent": (
                         "WayToParadise/1.0 "
-                        "(Travel Planner POC; contact@example.com)"
+                        "(Travel Planner POC)"
                     ),
                     "Accept": "application/json",
                 },
             )
+
             response.raise_for_status()
+
             data = response.json()
+
         except Exception as exc:
+
             print(
-                f"Wikipedia lookup error for {place_name} "
-                f"({language}): {exc}"
+                f"Wikipedia lookup error for "
+                f"{place_name} ({language}): {exc}"
             )
+
             continue
 
-        pages = (data or {}).get("query", {}).get("pages", {})
+        pages = (
+            (data or {})
+            .get("query", {})
+            .get("pages", {})
+        )
+
         candidates = []
 
         for page in pages.values():
-            title = str(page.get("title", "")).strip()
+
+            title = str(
+                page.get("title", "")
+            ).strip()
+
             title_lower = title.lower()
 
-            image_info = page.get("thumbnail") or page.get("original") or {}
-            image_url = image_info.get("source")
+            image_info = (
+                page.get("thumbnail")
+                or page.get("original")
+                or {}
+            )
+
+            image_url = image_info.get(
+                "source"
+            )
+
             if not image_url:
                 continue
 
             score = 0
+
             place_lower = place_name.lower()
 
-            # Strong match for the actual place name.
+            # Exact title match
             if place_lower == title_lower:
+
                 score += 30
-            elif place_lower in title_lower or title_lower in place_lower:
+
+            # Partial title match
+            elif (
+                place_lower in title_lower
+                or title_lower in place_lower
+            ):
+
                 score += 20
 
-            # Match important words from the place name.
+            # Important word matching
             score += sum(
-                3 for word in place_words
+                3
+                for word in place_words
                 if word in title_lower
             )
 
-            # Avoid clearly unrelated image pages.
-            if any(word in title_lower for word in bad_words):
+            # Avoid unrelated food pages
+            if any(
+                word in title_lower
+                for word in bad_words
+            ):
+
                 score -= 20
 
-            candidates.append((score, title, image_url))
+            candidates.append(
+                (
+                    score,
+                    title,
+                    image_url,
+                )
+            )
 
         if candidates:
+
             candidates.sort(
                 key=lambda item: item[0],
                 reverse=True,
             )
 
-            best_score, best_title, best_url = candidates[0]
+            best_score, best_title, best_url = (
+                candidates[0]
+            )
 
-            # Require a meaningful title match. This prevents random
-            # nearby Wikipedia images from appearing on the card.
             if best_score >= 8:
+
                 print(
-                    f"Wikipedia place image found for: "
+                    f"Wikipedia image found: "
                     f"{place_name} -> {best_title}"
                 )
+
                 return best_url
 
-    print(f"No suitable Wikipedia image found for: {place_name}")
+    print(
+        f"No suitable Wikipedia image found: "
+        f"{place_name}"
+    )
+
     return None
 
 
@@ -167,9 +215,7 @@ def get_osm_image(
     # image=
     # --------------------------------------------------------
 
-    image = tags.get(
-        "image"
-    )
+    image = tags.get("image")
 
     if image:
 
@@ -177,10 +223,9 @@ def get_osm_image(
             str(image).strip()
         )
 
-        if image.startswith(
-            "http://"
-        ) or image.startswith(
-            "https://"
+        if (
+            image.startswith("http://")
+            or image.startswith("https://")
         ):
 
             return image
@@ -204,9 +249,7 @@ def get_osm_image(
             "file:"
         ):
 
-            file_name = value[
-                5:
-            ].strip()
+            file_name = value[5:].strip()
 
             if file_name:
 
@@ -216,11 +259,10 @@ def get_osm_image(
                     f"{quote(file_name)}"
                 )
 
-        # Direct Commons URL
-        if value.startswith(
-            "http://"
-        ) or value.startswith(
-            "https://"
+        # Direct Wikimedia URL
+        if (
+            value.startswith("http://")
+            or value.startswith("https://")
         ):
 
             return value
@@ -244,7 +286,7 @@ async def search_places(
 
     Images:
         1. OpenStreetMap image
-        2. Wikimedia Commons image search
+        2. Wikipedia image
         3. None if no relevant image exists
     """
 
@@ -254,13 +296,8 @@ async def search_places(
 
     try:
 
-        latitude = float(
-            latitude
-        )
-
-        longitude = float(
-            longitude
-        )
+        latitude = float(latitude)
+        longitude = float(longitude)
 
     except (
         TypeError,
@@ -270,9 +307,7 @@ async def search_places(
         return {
             "success": False,
             "places": [],
-            "error_type": (
-                "validation_error"
-            ),
+            "error_type": "validation_error",
             "message": (
                 "Invalid latitude or longitude."
             ),
@@ -283,7 +318,8 @@ async def search_places(
     # SEARCH RADIUS
     # ========================================================
 
-    radius = 30000
+    # 10 km is safer than 30 km for Overpass.
+    radius = 10000
 
     # ========================================================
     # CATEGORY QUERIES
@@ -354,7 +390,7 @@ async def search_places(
     # ========================================================
 
     query = f"""
-[out:json][timeout:60];
+[out:json][timeout:25];
 
 (
     {
@@ -382,6 +418,10 @@ out center tags;
             "application/x-www-form-urlencoded"
         ),
     }
+
+    # ========================================================
+    # LOG
+    # ========================================================
 
     print(
         "\n"
@@ -413,28 +453,76 @@ out center tags;
     )
 
     # ========================================================
-    # OVERPASS REQUEST
+    # TRY MULTIPLE OVERPASS SERVERS
     # ========================================================
+
+    response = None
 
     try:
 
         async with httpx.AsyncClient(
-            timeout=90.0,
+            timeout=40.0,
             follow_redirects=True,
         ) as client:
 
-            response = await client.post(
-                OVERPASS_URL,
-                data={
-                    "data": query
-                },
-                headers=headers,
-            )
+            for overpass_url in OVERPASS_URLS:
 
-        print(
-            "Overpass Status:",
-            response.status_code,
-        )
+                print(
+                    f"Trying Overpass server: "
+                    f"{overpass_url}"
+                )
+
+                try:
+
+                    current_response = (
+                        await client.post(
+                            overpass_url,
+                            data={
+                                "data": query
+                            },
+                            headers=headers,
+                        )
+                    )
+
+                    print(
+                        "Overpass Status:",
+                        current_response.status_code,
+                    )
+
+                    if (
+                        current_response.status_code
+                        == 200
+                    ):
+
+                        response = current_response
+
+                        print(
+                            "Overpass server succeeded."
+                        )
+
+                        break
+
+                    print(
+                        "Overpass server failed:",
+                        current_response.status_code,
+                    )
+
+                except httpx.TimeoutException:
+
+                    print(
+                        "Overpass server timed out."
+                    )
+
+                    continue
+
+                except httpx.RequestError as exc:
+
+                    print(
+                        "Overpass connection error:",
+                        str(exc),
+                    )
+
+                    continue
 
     except httpx.TimeoutException:
 
@@ -462,12 +550,31 @@ out center tags;
         return {
             "success": False,
             "places": [],
-            "error_type": (
-                "request_error"
-            ),
+            "error_type": "request_error",
             "message": (
                 "Unable to connect to "
                 "Places service."
+            ),
+            "is_live": False,
+        }
+
+    # ========================================================
+    # ALL SERVERS FAILED
+    # ========================================================
+
+    if response is None:
+
+        print(
+            "All Overpass servers failed."
+        )
+
+        return {
+            "success": False,
+            "places": [],
+            "error_type": "places_api_error",
+            "message": (
+                "Places service is temporarily "
+                "unavailable."
             ),
             "is_live": False,
         }
@@ -489,9 +596,7 @@ out center tags;
         return {
             "success": False,
             "places": [],
-            "error_type": (
-                "places_api_error"
-            ),
+            "error_type": "places_api_error",
             "message": (
                 "Places service returned "
                 f"HTTP {response.status_code}."
@@ -517,9 +622,7 @@ out center tags;
         return {
             "success": False,
             "places": [],
-            "error_type": (
-                "invalid_response"
-            ),
+            "error_type": "invalid_response",
             "message": (
                 "Places service returned "
                 "invalid data."
@@ -540,6 +643,7 @@ out center tags;
         elements,
         list,
     ):
+
         elements = []
 
     print(
@@ -570,6 +674,7 @@ out center tags;
             tags,
             dict,
         ):
+
             tags = {}
 
         # ----------------------------------------------------
@@ -602,6 +707,7 @@ out center tags;
                 center,
                 dict,
             ):
+
                 center = {}
 
             lat = center.get(
@@ -625,6 +731,7 @@ out center tags;
             or lat is None
             or lon is None
         ):
+
             continue
 
         name = str(
@@ -632,6 +739,7 @@ out center tags;
         ).strip()
 
         if not name:
+
             continue
 
         # ----------------------------------------------------
@@ -641,6 +749,7 @@ out center tags;
         name_key = name.lower()
 
         if name_key in seen_names:
+
             continue
 
         seen_names.add(
@@ -664,18 +773,10 @@ out center tags;
         # ----------------------------------------------------
 
         address = (
-            tags.get(
-                "addr:street"
-            )
-            or tags.get(
-                "addr:city"
-            )
-            or tags.get(
-                "addr:place"
-            )
-            or tags.get(
-                "addr:full"
-            )
+            tags.get("addr:street")
+            or tags.get("addr:city")
+            or tags.get("addr:place")
+            or tags.get("addr:full")
         )
 
         # ----------------------------------------------------
@@ -684,9 +785,7 @@ out center tags;
 
         phone = (
             tags.get("phone")
-            or tags.get(
-                "contact:phone"
-            )
+            or tags.get("contact:phone")
         )
 
         # ----------------------------------------------------
@@ -695,13 +794,11 @@ out center tags;
 
         website = (
             tags.get("website")
-            or tags.get(
-                "contact:website"
-            )
+            or tags.get("contact:website")
         )
 
         # ----------------------------------------------------
-        # OSM IMAGE FIRST
+        # OSM IMAGE
         # ----------------------------------------------------
 
         place_image = get_osm_image(
@@ -711,12 +808,11 @@ out center tags;
         if place_image:
 
             print(
-                f"OSM image found: "
-                f"{name}"
+                f"OSM image found: {name}"
             )
 
         # ----------------------------------------------------
-        # ADD PLACE TEMPORARILY
+        # ADD PLACE
         # ----------------------------------------------------
 
         place = {
@@ -756,18 +852,14 @@ out center tags;
             place
         )
 
-        # ----------------------------------------------------
-        # COLLECT MORE THAN 5 TEMPORARILY
-        # ----------------------------------------------------
-        # We want a chance to find places with images.
-        # So we don't stop immediately at 5.
-        # ----------------------------------------------------
-
+        # Collect up to 15 first
+        # so image matching has more options.
         if len(places) >= 15:
+
             break
 
     # ========================================================
-    # WIKIMEDIA IMAGE SEARCH
+    # WIKIPEDIA IMAGE SEARCH
     # ========================================================
 
     print(
@@ -776,7 +868,7 @@ out center tags;
     )
 
     print(
-        "WIKIMEDIA IMAGE SEARCH"
+        "WIKIPEDIA IMAGE SEARCH"
     )
 
     print(
@@ -798,13 +890,11 @@ out center tags;
 
             for place in places:
 
-                # --------------------------------------------
-                # Already has image
-                # --------------------------------------------
-
+                # Already has OSM image
                 if place.get(
                     "image"
                 ):
+
                     continue
 
                 image = await get_wikimedia_image(
@@ -841,7 +931,7 @@ out center tags;
                     place[
                         "image_source"
                     ] = (
-                        "Wikimedia Commons"
+                        "Wikipedia"
                     )
 
                 else:
@@ -860,7 +950,7 @@ out center tags;
     except Exception as exc:
 
         print(
-            "Wikimedia service error:",
+            "Wikipedia image service error:",
             str(exc),
         )
 
@@ -880,7 +970,6 @@ out center tags;
         if not place.get("image")
     ]
 
-    # Image places first
     final_places = (
         places_with_images
         + places_without_images
@@ -893,7 +982,7 @@ out center tags;
     final_places = final_places[:5]
 
     # ========================================================
-    # FINAL RESULT LOG
+    # FINAL LOG
     # ========================================================
 
     print(
@@ -937,9 +1026,7 @@ out center tags;
         return {
             "success": True,
             "places": [],
-            "error_type": (
-                "no_results"
-            ),
+            "error_type": "no_results",
             "message": (
                 "No places found for "
                 f"category: {category}"
@@ -953,14 +1040,10 @@ out center tags;
 
     return {
         "success": True,
-
         "places": final_places,
-
         "error_type": None,
-
         "message": (
             "Places fetched successfully"
         ),
-
         "is_live": True,
     }

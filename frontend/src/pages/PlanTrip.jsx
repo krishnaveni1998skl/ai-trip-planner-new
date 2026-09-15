@@ -1901,78 +1901,14 @@ const topFiveFlights = flightResults.slice(0, 5);
                     className="rounded-xl bg-[#C89B3C] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#A77C2E] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {savedTripId ? "✓ Trip Saved" : "💾 Save Trip"}
+                    
                   </button>
+                  </div>
                 </div>
               </div>
-
-              {/* ========================================
-                  RAG TRAVEL SOURCES
-              ======================================== */}
-
-              {Array.isArray(itinerary.travel_sources) &&
-                itinerary.travel_sources.length > 0 && (
-                  <div className="rounded-3xl border border-[#D8B98A] bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">📚</span>
-                      <div>
-                        <h3 className="text-2xl font-bold text-[#4A2C1A]">
-                          Travel Sources
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-600">
-                          Destination-specific information used by the AI
-                          itinerary.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 space-y-3">
-                      {itinerary.travel_sources.map((source, index) => {
-                        const sourceText = String(source || "");
-                        const fileName =
-                          sourceText.split(/[\\/]/).pop() || sourceText;
-
-                        return (
-                          <div
-                            key={`${fileName}-${index}`}
-                            className="flex items-center gap-4 rounded-2xl border border-[#eadfc9] bg-[#fffdf8] p-4"
-                          >
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f3ead8] text-2xl">
-                              📄
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="font-semibold text-[#4A2C1A]">
-                                {fileName}
-                              </p>
-                              <p className="mt-1 text-xs text-gray-500">
-                                RAG destination reference •{" "}
-                                {tripData.destination}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-              {(!Array.isArray(itinerary.travel_sources) ||
-                itinerary.travel_sources.length === 0) && (
-                <div className="rounded-3xl border border-[#eadfc9] bg-[#fffdf8] p-6">
-                  <p className="font-semibold text-[#4A2C1A]">
-                    📚 Travel Sources
-                  </p>
-                  <p className="mt-2 text-sm text-gray-600">
-                    No destination PDF source was returned by the RAG service.
-                    Make sure the {tripData.destination || "destination"} PDF is
-                    present in the backend RAG data.
-                  </p>
-                </div>
-              )}
-            </div>
           )}
-        </SectionContainer>
-      );
+              </SectionContainer>
+        );
     }
     // ========================================
     // FLIGHTS
