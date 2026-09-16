@@ -2,10 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
-  const [destination, setDestination] = useState("");
-  const [travelDate, setTravelDate] = useState("");
-  const [travelers, setTravelers] = useState("2 Adults");
-  const [budget, setBudget] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [isPlanning, setIsPlanning] = useState(false);
 
   const navigate = useNavigate();
@@ -15,25 +12,10 @@ function Home() {
   // =====================================================
 
   const handlePlan = () => {
-    const place = destination.trim();
-    const amount = budget.trim();
+    const message = prompt.trim();
 
-    if (!place) {
+    if (!message) {
       return;
-    }
-
-    let message = `Plan a trip to ${place}`;
-
-    if (travelDate) {
-      message += ` on ${travelDate}`;
-    }
-
-    if (travelers) {
-      message += ` for ${travelers}`;
-    }
-
-    if (amount) {
-      message += ` with a budget of ₹${amount}`;
     }
 
     setIsPlanning(true);
@@ -54,7 +36,7 @@ function Home() {
   // =====================================================
 
   const selectDestination = (place) => {
-    setDestination(place);
+    setPrompt(`Plan a trip to ${place} for 5 days.`);
   };
 
   return (
@@ -162,137 +144,40 @@ function Home() {
           </div>
 
           {/* =====================================================
-              SEARCH / PLANNING CARD
+              AI TRIP PROMPT CARD
           ===================================================== */}
 
-          <div className="relative z-20 -mt-1 rounded-3xl border border-[#D8B98A]/40 bg-[#FBF7EF] p-3 shadow-[0_20px_60px_rgba(47,26,16,0.35)] sm:p-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.1fr_1fr_1fr_1.1fr_1.2fr]">
-              {/* =================================================
-                  WHERE TO
-              ================================================= */}
-
-              <div className="rounded-2xl border border-[#D8B98A]/30 bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl text-[#7A4018]">●</span>
-
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-xs font-bold text-[#2F2118]">
-                      Where to?
-                    </label>
-
-                    <input
-                      type="text"
-                      value={destination}
-                      onChange={(event) => setDestination(event.target.value)}
-                      placeholder="e.g. Maldives, Dubai"
-                      className="mt-1 w-full bg-transparent text-sm text-[#5A3A25] outline-none placeholder:text-[#8B7764]"
-                    />
-                  </div>
-                </div>
+          <div className="relative z-20 -mt-1 rounded-3xl border border-[#D8B98A]/50 bg-[#FBF7EF] p-4 shadow-[0_20px_60px_rgba(47,26,16,0.35)] sm:p-5 lg:p-6">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]">
+              {/* USER PROMPT */}
+              <div className="rounded-2xl border border-[#E3D6C5] bg-white px-5 py-4 shadow-sm">
+                <textarea
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  rows={2}
+                  placeholder="Tell me about your trip..."
+                  className="w-full resize-none bg-transparent text-base leading-7 text-[#2F2118] outline-none placeholder:text-[#9A8877] sm:text-lg"
+                />
               </div>
 
-              {/* =================================================
-                  TRAVEL DATE
-              ================================================= */}
-
-              <div className="rounded-2xl border border-[#D8B98A]/30 bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl text-[#7A4018]">▣</span>
-
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-xs font-bold text-[#2F2118]">
-                      Travel Dates
-                    </label>
-
-                    <input
-                      type="date"
-                      value={travelDate}
-                      onChange={(event) => setTravelDate(event.target.value)}
-                      className="mt-1 w-full bg-transparent text-sm text-[#5A3A25] outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* =================================================
-                  TRAVELERS
-              ================================================= */}
-
-              <div className="rounded-2xl border border-[#D8B98A]/30 bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl text-[#7A4018]">●●</span>
-
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-xs font-bold text-[#2F2118]">
-                      Travelers
-                    </label>
-
-                    <select
-                      value={travelers}
-                      onChange={(event) => setTravelers(event.target.value)}
-                      className="mt-1 w-full cursor-pointer bg-transparent text-sm text-[#5A3A25] outline-none"
-                    >
-                      <option>1 Adult</option>
-                      <option>2 Adults</option>
-                      <option>3 Adults</option>
-                      <option>4 Adults</option>
-                      <option>5 Adults</option>
-                      <option>6 Adults</option>
-                      <option>2 Adults + 1 Child</option>
-                      <option>2 Adults + 2 Children</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* =================================================
-                  BUDGET
-              ================================================= */}
-
-              <div className="rounded-2xl border border-[#D8B98A]/30 bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold text-[#7A4018]">₹</span>
-
-                  <div className="min-w-0 flex-1">
-                    <label className="block text-xs font-bold text-[#2F2118]">
-                      Budget (₹)
-                    </label>
-
-                    <input
-                      type="number"
-                      value={budget}
-                      onChange={(event) => setBudget(event.target.value)}
-                      placeholder="e.g. 2,00,000"
-                      className="mt-1 w-full bg-transparent text-sm text-[#5A3A25] outline-none placeholder:text-[#8B7764]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* =================================================
-                  PLAN BUTTON
-              ================================================= */}
-
+              {/* GENERATE PLAN */}
               <button
                 type="button"
                 onClick={handlePlan}
-                disabled={isPlanning || !destination.trim()}
-                className="min-h-[70px] rounded-2xl bg-[#7A4018] px-6 text-sm font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#8D4B1B] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isPlanning || !prompt.trim()}
+                className="min-h-[76px] rounded-2xl bg-[#6B4226] px-6 text-base font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:bg-[#4A2C1A] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPlanning ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#E7C76B]" />
-
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#E7C76B] [animation-delay:150ms]" />
-
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#E7C76B] [animation-delay:300ms]" />
-
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-white" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:150ms]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:300ms]" />
                     <span>Planning...</span>
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    Plan My Journey
-                    <span className="text-lg text-[#E7C76B]">→</span>
+                    Generate Plan
+                    <span className="text-xl">➤</span>
                   </span>
                 )}
               </button>
@@ -427,13 +312,9 @@ function Home() {
         <div className="absolute inset-0 bg-[#F6EFE3]/65" />
 
         <div className="relative mx-auto max-w-4xl text-center">
-          
-
           <blockquote className="font-serif text-2xl italic leading-relaxed text-[#4A2713] sm:text-4xl">
-           "Travel far enough, you meet yourself."
+            "Travel far enough, you meet yourself."
           </blockquote>
-
-          
         </div>
       </section>
 
