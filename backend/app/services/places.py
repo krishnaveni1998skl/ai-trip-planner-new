@@ -1,7 +1,12 @@
 import html
-from urllib.parse import quote
+import os
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
+
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
 
 # ============================================================
@@ -16,23 +21,21 @@ OVERPASS_URLS = [
 
 
 # ============================================================
-# GET WIKIPEDIA IMAGE
+# GET IMAGE FROM PEXELS
 # ============================================================
 
-async def get_wikimedia_image(
+async def get_pexels_image(
     client,
     place_name,
-    latitude,
-    longitude,
 ):
     """
-    Find a place-specific image using Wikipedia page images.
+    Find a relevant place image using the Pexels API.
 
-    OpenStreetMap remains the main place-data source.
-    Wikipedia is used only as an image fallback.
+    OpenStreetMap remains the primary place-data source.
+    Pexels is used only when OSM does not provide an image.
     """
 
-    if not place_name:
+    if not PEXELS_API_KEY or not place_name:
         return None
 
     place_name = str(place_name).strip()
@@ -40,162 +43,71 @@ async def get_wikimedia_image(
     if not place_name:
         return None
 
-    place_words = {
-        word.lower().strip(".,()[]{}")
-        for word in place_name.split()
-        if len(word.strip(".,()[]{}")) >= 3
-    }
-
-    bad_words = (
-        "restaurant",
-        "food",
-        "menu",
-        "dish",
-        "meal",
-        "cuisine",
-    )
-
-    # Try English and French Wikipedia.
-    for language in ("en", "fr"):
-
-        api_url = (
-            f"https://{language}.wikipedia.org/w/api.php"
-        )
-
-        params = {
-            "action": "query",
-            "format": "json",
-            "generator": "search",
-            "gsrsearch": place_name,
-            "gsrnamespace": "0",
-            "gsrlimit": "10",
-            "prop": "pageimages|info",
-            "piprop": "thumbnail|original",
-            "pithumbsize": "1000",
-            "inprop": "url",
-            "redirects": "1",
-        }
-
-        try:
-
-            response = await client.get(
-                api_url,
-                params=params,
-                headers={
-                    "User-Agent": (
-                        "WayToParadise/1.0 "
-                        "(Travel Planner POC)"
-                    ),
-                    "Accept": "application/json",
-                },
-            )
-
-            response.raise_for_status()
-
-            data = response.json()
-
-        except Exception as exc:
-
-            print(
-                f"Wikipedia lookup error for "
-                f"{place_name} ({language}): {exc}"
-            )
-
-            continue
-
-        pages = (
-            (data or {})
-            .get("query", {})
-            .get("pages", {})
-        )
-
-        candidates = []
-
-        for page in pages.values():
-
-            title = str(
-                page.get("title", "")
-            ).strip()
-
-            title_lower = title.lower()
-
-            image_info = (
-                page.get("thumbnail")
-                or page.get("original")
-                or {}
-            )
-
-            image_url = image_info.get(
-                "source"
-            )
-
-            if not image_url:
-                continue
-
-            score = 0
-
-            place_lower = place_name.lower()
-
-            # Exact title match
-            if place_lower == title_lower:
-
-                score += 30
-
-            # Partial title match
-            elif (
-                place_lower in title_lower
-                or title_lower in place_lower
-            ):
-
-                score += 20
-
-            # Important word matching
-            score += sum(
-                3
-                for word in place_words
-                if word in title_lower
-            )
-
-            # Avoid unrelated food pages
-            if any(
-                word in title_lower
-                for word in bad_words
-            ):
-
-                score -= 20
-
-            candidates.append(
-                (
-                    score,
-                    title,
-                    image_url,
-                )
-            )
-
-        if candidates:
-
-            candidates.sort(
-                key=lambda item: item[0],
-                reverse=True,
-            )
-
-            best_score, best_title, best_url = (
-                candidates[0]
-            )
-
-            if best_score >= 8:
-
-                print(
-                    f"Wikipedia image found: "
-                    f"{place_name} -> {best_title}"
-                )
-
-                return best_url
+    query = f"{place_name} tourist attraction"
 
     print(
-        f"No suitable Wikipedia image found: "
-        f"{place_name}"
+        f"Pexels image search: {query}"
     )
+
+    try:
+        response = await client.get(
+            "https://api.pexels.com/v1/search",
+            params={
+                "query": query,
+                "per_page": 5,
+                "orientation": "landscape",
+            },
+            headers={
+                "Authorization": PEXELS_API_KEY,
+                "Accept": "application/json",
+            },
+        )
+
+        print(
+            "Pexels status:",
+            response.status_code,
+        )
+
+        if response.status_code != 200:
+            print(
+                "Pexels API error:",
+                response.text[:500],
+            )
+            return None
+
+        data = response.json()
+        photos = data.get("photos", [])
+
+        if not photos:
+            print(
+                f"No Pexels image found: {place_name}"
+            )
+            return None
+
+        # Prefer a landscape image suitable for a place card.
+        for photo in photos:
+            src = photo.get("src", {})
+
+            image_url = (
+                src.get("large2x")
+                or src.get("large")
+                or src.get("medium")
+            )
+
+            if image_url:
+                print(
+                    f"Pexels image found: {place_name}"
+                )
+                return image_url
+
+    except (
+        httpx.RequestError,
+        httpx.TimeoutException,
+        ValueError,
+    ) as exc:
+        print(
+            f"Pexels image lookup error for {place_name}: {exc}"
+        )
 
     return None
 
@@ -286,7 +198,7 @@ async def search_places(
 
     Images:
         1. OpenStreetMap image
-        2. Wikipedia image
+        2. Pexels image
         3. None if no relevant image exists
     """
 
@@ -859,7 +771,7 @@ out center tags;
             break
 
     # ========================================================
-    # WIKIPEDIA IMAGE SEARCH
+    # PEXELS IMAGE SEARCH
     # ========================================================
 
     print(
@@ -868,93 +780,83 @@ out center tags;
     )
 
     print(
-        "WIKIPEDIA IMAGE SEARCH"
+        "PEXELS IMAGE SEARCH"
     )
 
     print(
         "========================================"
     )
 
-    try:
+    if PEXELS_API_KEY:
+        try:
+            async with httpx.AsyncClient(
+                timeout=20.0,
+                follow_redirects=True,
+            ) as client:
 
-        async with httpx.AsyncClient(
-            timeout=20.0,
-            follow_redirects=True,
-            headers={
-                "User-Agent": (
-                    "WayToParadise/1.0 "
-                    "(Travel Planner POC)"
-                )
-            },
-        ) as client:
+                for place in places:
+
+                    # Already has an OSM image.
+                    if place.get("image"):
+                        place["image_source"] = (
+                            "OpenStreetMap"
+                        )
+                        continue
+
+                    image = await get_pexels_image(
+                        client=client,
+                        place_name=place.get("name"),
+                    )
+
+                    if image:
+                        place["image"] = image
+                        place["image_url"] = image
+                        place["photo"] = image
+                        place["photo_url"] = image
+                        place["image_source"] = "Pexels"
+                    else:
+                        place["image_source"] = (
+                            "Image unavailable"
+                        )
+
+                        print(
+                            f"No exact image found: "
+                            f"{place.get('name')}"
+                        )
+
+        except Exception as exc:
+            print(
+                "Pexels image service error:",
+                str(exc),
+            )
 
             for place in places:
-
-                # Already has OSM image
-                if place.get(
-                    "image"
-                ):
-
-                    continue
-
-                image = await get_wikimedia_image(
-                    client=client,
-                    place_name=place.get(
-                        "name"
-                    ),
-                    latitude=place.get(
-                        "latitude"
-                    ),
-                    longitude=place.get(
-                        "longitude"
-                    ),
-                )
-
-                if image:
-
-                    place[
-                        "image"
-                    ] = image
-
-                    place[
-                        "image_url"
-                    ] = image
-
-                    place[
-                        "photo"
-                    ] = image
-
-                    place[
-                        "photo_url"
-                    ] = image
-
-                    place[
-                        "image_source"
-                    ] = (
-                        "Wikipedia"
+                if place.get("image"):
+                    place["image_source"] = (
+                        "OpenStreetMap"
                     )
-
                 else:
-
-                    place[
-                        "image_source"
-                    ] = (
+                    place["image_source"] = (
                         "Image unavailable"
                     )
-
-                    print(
-                        f"No exact image found: "
-                        f"{place.get('name')}"
-                    )
-
-    except Exception as exc:
-
+    else:
         print(
-            "Wikipedia image service error:",
-            str(exc),
+            "PEXELS_API_KEY is missing. "
+            "Skipping Pexels image search."
         )
 
-    # ========================================================
+        for place in places:
+            if place.get("image"):
+                place["image_source"] = (
+                    "OpenStreetMap"
+                )
+            else:
+                place["image_source"] = (
+                    "Image unavailable"
+                )
+
+
+# ========================================================
     # PRIORITIZE PLACES WITH IMAGES
     # ========================================================
 
